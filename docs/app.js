@@ -126,7 +126,7 @@ function setConnected(isConnected, via) {
   connected = isConnected;
   $("connDot").classList.toggle("connected", isConnected);
   $("connLabel").textContent = isConnected
-    ? (via === "fc-uart" ? "Connected (FC passthrough)" : "Connected")
+    ? (via === "fc-uart" ? "Connected (BF passthrough)" : "Connected")
     : "Not connected";
   $("btnConnect").hidden = isConnected;
   $("btnDisconnect").hidden = !isConnected;

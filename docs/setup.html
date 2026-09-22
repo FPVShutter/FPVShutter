@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Setup Guide — ShutterLink</title>
+<title>Setup Guide — FPVShutter</title>
 <meta name="description" content="Step-by-step: wire the ESP32-C3 to your flight controller, configure Betaflight, flash the firmware, connect the Web UI and pair your camera.">
 <script>(function(){try{var t=localStorage.getItem('shutterlink.theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 <link rel="stylesheet" href="assets/site.css">
@@ -25,7 +25,7 @@
 <header class="site-header glass">
   <a href="index.html" class="brand">
     <svg><use href="#i-aperture"/></svg>
-    <span class="name">ShutterLink<span class="sub">Betaflight Cam Control</span></span>
+    <span class="name">FPVShutter<span class="sub">Betaflight Cam Control</span></span>
   </a>
   <button class="iconbtn" id="navToggle" aria-label="Toggle menu"><svg><use href="#i-menu"/></svg></button>
   <nav class="site-nav">
@@ -37,7 +37,7 @@
   </nav>
   <div class="header-actions">
     <button class="iconbtn" id="themeBtn" title="Toggle theme"><svg id="themeIco"><use href="#i-moon"/></svg></button>
-    <a class="iconbtn" href="https://github.com/Caboosh/shutterlink-CBSHFPV" target="_blank" rel="noopener" title="View on GitHub"><svg><use href="#i-github"/></svg></a>
+    <a class="iconbtn" href="https://github.com/FPVShutter/FPVShutter" target="_blank" rel="noopener" title="View on GitHub"><svg><use href="#i-github"/></svg></a>
   </div>
 </header>
 
@@ -126,9 +126,9 @@
                 (115200 baud, leave everything else off for that port).</li>
               <li><strong>OSD tab:</strong> place <strong>Custom Message 1–4</strong> elements wherever you
                 want them on screen — position comes from Betaflight, <em>content</em> is pushed live by
-                ShutterLink.</li>
+                FPVShutter.</li>
               <li>Assign an AUX channel (on your radio's mixes tab) as your record switch if you want
-                switch control. You don't need to create a Betaflight <em>mode</em> for it — ShutterLink
+                switch control. You don't need to create a Betaflight <em>mode</em> for it — FPVShutter
                 reads the raw RC channels.</li>
             </ol>
             <div class="notice">
@@ -146,8 +146,8 @@
           <div class="body">
             <h3>Build &amp; flash the firmware</h3>
 <pre><code># 1. Clone
-git clone https://github.com/Caboosh/shutterlink-CBSHFPV.git
-cd shutterlink
+git clone https://github.com/FPVShutter/FPVShutter.git
+cd FPVShutter
 
 # 2. Build
 pio run
@@ -172,8 +172,8 @@ pio device monitor -b 115200</code></pre>
             <h3>Connect to the Web UI</h3>
             <ol>
               <li>Power the ESP32 (FC 5&nbsp;V or USB).</li>
-              <li>On your phone or PC, join the Wi-Fi network <strong>ShutterLink</strong> (password:
-                <strong>shutterlink</strong>).</li>
+              <li>On your phone or PC, join the Wi-Fi network <strong>FPVShutter</strong> (password:
+                <strong>fpvshutter</strong>).</li>
               <li>The captive portal opens automatically on most devices; otherwise browse to
                 <strong>http://192.168.4.1</strong>.</li>
               <li>You land on the <strong>Dashboard</strong> with live status cards.</li>
@@ -254,7 +254,7 @@ pio device monitor -b 115200</code></pre>
       <section class="section">
         <div class="notice ok">
           <svg><use href="#i-usb"/></svg>
-          <p>Need to configure ShutterLink on the bench, without joining its Wi-Fi network? The
+          <p>Need to configure FPVShutter on the bench, without joining its Wi-Fi network? The
             <a href="console.html">Web Serial Configurator</a> talks to the board directly over USB, or
             through a Betaflight serial passthrough once it's mounted in the quad. Full protocol details
             are in the <a href="reference.html">Reference</a> page.</p>
@@ -265,12 +265,12 @@ pio device monitor -b 115200</code></pre>
 </main>
 
 <footer class="site-footer">
-  <span>ShutterLink · MIT licensed · A fork of <a href="https://github.com/rover1312/shutterlink" target="_blank" rel="noopener">rover1312/shutterlink</a> · Not affiliated with DJI, GoPro or itsFPV</span>
+  <span>FPVShutter · MIT licensed · A fork of <a href="https://github.com/rover1312/shutterlink" target="_blank" rel="noopener">rover1312/shutterlink</a> · Not affiliated with DJI, GoPro or itsFPV</span>
   <div class="footer-links">
-    <a href="https://github.com/Caboosh/shutterlink-CBSHFPV" target="_blank" rel="noopener">GitHub</a>
+    <a href="https://github.com/FPVShutter/FPVShutter" target="_blank" rel="noopener">GitHub</a>
     <a href="https://github.com/rover1312/shutterlink" target="_blank" rel="noopener">Upstream</a>
-    <a href="https://github.com/Caboosh/shutterlink-CBSHFPV/releases" target="_blank" rel="noopener">Releases</a>
-    <a href="https://github.com/Caboosh/shutterlink-CBSHFPV/issues" target="_blank" rel="noopener">Issues</a>
+    <a href="https://github.com/FPVShutter/FPVShutter/releases" target="_blank" rel="noopener">Releases</a>
+    <a href="https://github.com/FPVShutter/FPVShutter/issues" target="_blank" rel="noopener">Issues</a>
     <a href="reference.html">Reference</a>
   </div>
 </footer>

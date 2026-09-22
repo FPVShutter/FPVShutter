@@ -107,7 +107,7 @@ void camInit() {
     initMutexes();
 
     DBG("CAM: Initialising NimBLE stack...");
-    NimBLEDevice::init("ESP32-ShutterLink");
+    NimBLEDevice::init("ESP32-FPVShutter");
     NimBLEDevice::setPower(ESP_PWR_LVL_P9);
 
     // Bonding enabled (needed for GoPro LE pairing); Just Works IO caps.

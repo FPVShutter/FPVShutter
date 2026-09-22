@@ -1,4 +1,4 @@
-# shutterlink - CBSHFPV Edition.
+# FPVShutter - Camera Record Control and OSD Telemetry through Betaflight.
 
 Open-source CamLink alternative based on [shutterlink](https://github.com/rover1312/shutterlink): an ESP32-C3 BLE bridge that turns a radio
 switch (or your arming switch!) into record control for **DJI Osmo Action**
@@ -79,7 +79,7 @@ is the same on them as it is on the Osmo Nano.
 ```
  +-----------+  RC frames   +------------------+ MSP (UART) +---------------+
  | Radio TX  | -----------> | Flight Controller| <--------> |   ESP32-C3    |
- +-----------+              |   (Betaflight)   |  Serial1   | (ShutterLink) |
+ +-----------+              |   (Betaflight)   |  Serial1   | (FPVShutter)  |
                             +------------------+            +-------+-------+
                                      ^                              | BLE
                                      |                              +-> DJI DUML
@@ -102,8 +102,8 @@ is the same on them as it is on the Osmo Nano.
 3. **Camera to OSD:** up to four independent strings pushed on change (checked
    every 500 ms) into Betaflight Custom Messages 1-4 via `MSP2_SET_TEXT`.
 
-4. **Web UI:** the ESP32 runs a SoftAP (default SSID `ShutterLink`, password
-   `shutterlink`). Browse to `http://192.168.4.1`.
+4. **Web UI:** the ESP32 runs a SoftAP (default SSID `FPVShutter`, password
+   `fpvshutter`). Browse to `http://192.168.4.1`.
 
 5. **configurator:** the same configuration surface is also reachable over
    USB from `docs/index.html` (see "Web Serial configurator" below) — useful
@@ -166,11 +166,11 @@ The on-board status LED (GPIO8 on most C3 boards) blinks the link state:
 
 2. **OSD tab:** place **Custom Message 1-4** elements wherever you want them
    on your screen - position comes from Betaflight, *content* is pushed live
-   by ShutterLink.
+   by FPVShutter.
 
 3. Assign an AUX channel (on your radio's mixes tab) as your record switch if
    you want switch control. You don't need to create a Betaflight *mode* for
-   it - ShutterLink reads the raw RC channels.
+   it - FPVShutter reads the raw RC channels.
 
 > Remember: your Betaflight build must support **Custom Message OSD
 > elements** (`MSP2_SET_TEXT`). Stock 4.x / 4.5 does not.
@@ -179,8 +179,8 @@ The on-board status LED (GPIO8 on most C3 boards) blinks the link state:
 
 ```bash
 # 1. Clone
-git clone https://github.com/caboosh/shutterlink-CBSHFPV.git
-cd shutterlink
+git clone https://github.com/FPVShutter/FPVShutter.git
+cd FPVShutter
 
 # 2. Build
 pio run
@@ -202,8 +202,8 @@ above.
 
 1. Power the ESP32 (FC 5 V or USB).
 
-2. On your phone or PC, join the Wi-Fi network **`ShutterLink`**
-   (password: **`shutterlink`**).
+2. On your phone or PC, join the Wi-Fi network **`FPVShutter`**
+   (password: **`fpvshutter`**).
 
 3. The captive portal opens automatically on most devices; otherwise browse
    to **`http://192.168.4.1`**.
@@ -267,7 +267,7 @@ Done - go fly.
 
 ## Web UI Guide
 
-Connect a phone/PC to the ShutterLink Wi-Fi network - the captive portal
+Connect a phone/PC to the FPVShutter Wi-Fi network - the captive portal
 opens automatically on most devices, otherwise browse to
 `http://192.168.4.1`. Five tabs along the top:
 
@@ -326,7 +326,7 @@ page or power off mid-upload; if it fails, re-flash over USB.
 
 ## Web Serial Configurator
 
-`docs/` (served as GitHub Pages, e.g. `https://<user>.github.io/shutterlink/`)
+`docs/` (served as GitHub Pages, e.g. `https://fpvshutter.github.io/FPVShutter/`)
 is a standalone page that talks to the ESP32 directly over USB using the
 browser's [Web Serial API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Serial_API) —
 no Wi-Fi network required. Useful for bench setup, and it shares a raw
@@ -391,7 +391,7 @@ passthrough**. Behind the scenes the page:
    error, which it surfaces instead of pressing on blind). Betaflight
    bridges its USB connection straight through to that UART and **stops
    flying** — this is bench-only, disarmed, never in the air.
-5. Keeps using that *same* already-open connection as the ShutterLink JSON
+5. Keeps using that *same* already-open connection as the FPVShutter JSON
    channel from that point on — no second app, no picking a different COM
    port, no reconnecting.
 
@@ -477,7 +477,7 @@ to your PC stays active — so the configurator starts getting replies again on 
 own once the new firmware's `setup()` runs.
 
 Since this is the C3's *own* update mechanism, it has to already be running
-ShutterLink firmware that includes the `ota` serial command before you can
+FPVShutter firmware that includes the `ota` serial command before you can
 use it this way — flash the first build via the normal USB/PlatformIO
 workflow (Step 1), and every build after that can go over the air, on the
 bench or through the FC.
@@ -532,14 +532,14 @@ console). Compile-time defaults are in `src/config.h`:
 |`DEFAULT_STOP_ON_DISARM_DELAY_MS`| 0 | Configurable Delay (in ms) when disarmed, allowing for a grace period when turtling out of a crash |
 | `DEFAULT_SCAN_ALL` | false | Show all BLE advertisers during discovery |
 | `DEFAULT_WIFI_SWITCH_CH` | 255 (off) | AUX channel toggling the Wi-Fi AP |
-| `WIFI_AP_DEFAULT_SSID` / `_PASS` | ShutterLink / shutterlink | Web UI hotspot |
+| `WIFI_AP_DEFAULT_SSID` / `_PASS` | FPVShutter / fpvshutter | Web UI hotspot |
 | `DEFAULT_OSD_SLOT_1..4` | status/time/batt/link | Custom Message contents |
 | `STATUS_LED_PIN` | 8 | Onboard LED |
 
 ## Repository Structure
 
 ```
-shutterlink/
+FPVShutter/
 +-- platformio.ini          # ESP32-C3 build config + NimBLE dependency +
 |                            #   native-USB CDC flags
 +-- README.md

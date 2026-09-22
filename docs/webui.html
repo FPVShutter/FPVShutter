@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Web UI Guide — ShutterLink</title>
-<meta name="description" content="A tab-by-tab tour of the ShutterLink field Web UI: dashboard, controls, camera pairing, OSD slots, flight-controller status and OTA firmware updates.">
+<title>Web UI Guide — FPVShutter</title>
+<meta name="description" content="A tab-by-tab tour of the FPVShutter field Web UI: dashboard, controls, camera pairing, OSD slots, flight-controller status and OTA firmware updates.">
 <script>(function(){try{var t=localStorage.getItem('shutterlink.theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 <link rel="stylesheet" href="assets/site.css">
 </head>
@@ -28,7 +28,7 @@
 <header class="site-header glass">
   <a href="index.html" class="brand">
     <svg><use href="#i-aperture"/></svg>
-    <span class="name">ShutterLink<span class="sub">Betaflight Cam Control</span></span>
+    <span class="name">FPVShutter<span class="sub">Betaflight Cam Control</span></span>
   </a>
   <button class="iconbtn" id="navToggle" aria-label="Toggle menu"><svg><use href="#i-menu"/></svg></button>
   <nav class="site-nav">
@@ -40,14 +40,14 @@
   </nav>
   <div class="header-actions">
     <button class="iconbtn" id="themeBtn" title="Toggle theme"><svg id="themeIco"><use href="#i-moon"/></svg></button>
-    <a class="iconbtn" href="https://github.com/Caboosh/shutterlink-CBSHFPV" target="_blank" rel="noopener" title="View on GitHub"><svg><use href="#i-github"/></svg></a>
+    <a class="iconbtn" href="https://github.com/FPVShutter/FPVShutter" target="_blank" rel="noopener" title="View on GitHub"><svg><use href="#i-github"/></svg></a>
   </div>
 </header>
 
 <main class="page">
   <section class="section" style="margin-top:12px">
     <h1>Web UI Guide</h1>
-    <p class="lead">Connect a phone or PC to the ShutterLink Wi-Fi network — the captive portal opens
+    <p class="lead">Connect a phone or PC to the FPVShutter Wi-Fi network — the captive portal opens
       automatically on most devices, otherwise browse to <code>http://192.168.4.1</code>. Five tabs along
       the top.</p>
   </section>
@@ -123,7 +123,7 @@
   <section class="section">
     <div class="notice ok">
       <svg><use href="#i-sliders"/></svg>
-      <p>Prefer to configure ShutterLink without joining its Wi-Fi network — or need the unrestricted MSP
+      <p>Prefer to configure FPVShutter without joining its Wi-Fi network — or need the unrestricted MSP
         passthrough for debugging? Open the <a href="console.html">Web Serial Configurator</a> instead;
         it exposes the same settings surface over USB.</p>
     </div>
@@ -131,12 +131,12 @@
 </main>
 
 <footer class="site-footer">
-  <span>ShutterLink · MIT licensed · A fork of <a href="https://github.com/rover1312/shutterlink" target="_blank" rel="noopener">rover1312/shutterlink</a> · Not affiliated with DJI, GoPro or itsFPV</span>
+  <span>FPVShutter · MIT licensed · A fork of <a href="https://github.com/rover1312/shutterlink" target="_blank" rel="noopener">rover1312/shutterlink</a> · Not affiliated with DJI, GoPro or itsFPV</span>
   <div class="footer-links">
-    <a href="https://github.com/Caboosh/shutterlink-CBSHFPV" target="_blank" rel="noopener">GitHub</a>
+    <a href="https://github.com/FPVShutter/FPVShutter" target="_blank" rel="noopener">GitHub</a>
     <a href="https://github.com/rover1312/shutterlink" target="_blank" rel="noopener">Upstream</a>
-    <a href="https://github.com/Caboosh/shutterlink-CBSHFPV/releases" target="_blank" rel="noopener">Releases</a>
-    <a href="https://github.com/Caboosh/shutterlink-CBSHFPV/issues" target="_blank" rel="noopener">Issues</a>
+    <a href="https://github.com/FPVShutter/FPVShutter/releases" target="_blank" rel="noopener">Releases</a>
+    <a href="https://github.com/FPVShutter/FPVShutter/issues" target="_blank" rel="noopener">Issues</a>
     <a href="reference.html">Reference</a>
   </div>
 </footer>

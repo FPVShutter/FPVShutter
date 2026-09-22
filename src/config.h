@@ -14,7 +14,7 @@
 #include <Arduino.h>
 
 // Firmware version string (shown in UI and OTA status endpoint)
-#define FIRMWARE_VERSION "v2.2-CBSHFPV"
+#define FIRMWARE_VERSION "v2.2"
 
 // ──────────────────────────────────────────────────────────────────────────────
 // UART / MSP Configuration
@@ -98,7 +98,7 @@
 #define DEFAULT_WIFI_SWITCH_CH    255
 
 // SoftAP credentials for the Web UI (password empty = open network).
-#define WIFI_AP_DEFAULT_SSID      "ShutterLink"
+#define WIFI_AP_DEFAULT_SSID      "FPVShutter"
 #define WIFI_AP_DEFAULT_PASS      ""
 
 // Default content of Betaflight Custom Message slots 1..4 (OsdSlotContent).
