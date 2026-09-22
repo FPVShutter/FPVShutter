@@ -272,7 +272,7 @@ static void dispatchLine(Print &out, const String &line, bool viaFcUart) {
     if (path == "ping") {
         char resp[112];
         snprintf(resp, sizeof(resp),
-                 "{\"ok\":true,\"device\":\"shutterlink\",\"fw\":\"%s\",\"via\":\"%s\"}",
+                 "{\"ok\":true,\"device\":\"fpvshutter\",\"fw\":\"%s\",\"via\":\"%s\"}",
                  FIRMWARE_VERSION, viaFcUart ? "fc-uart" : "usb");
         out.println(resp);
 

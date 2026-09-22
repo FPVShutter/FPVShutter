@@ -1,7 +1,7 @@
 // ============================================================================
 // config.h — Project-wide configuration, pin definitions, and tunables
 // ============================================================================
-// ESP32-C3 ShutterLink: Betaflight ↔ DJI Osmo / GoPro camera bridge.
+// ESP32-C3 FPVShutter: Betaflight ↔ DJI Osmo / GoPro camera bridge.
 //
 // Runtime-changeable options (camera brand, switch channel, record-on-arm,
 // OSD slot contents, Wi-Fi credentials) live in settings.h / NVS and are

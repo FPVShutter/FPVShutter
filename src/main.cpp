@@ -1,5 +1,5 @@
 // ============================================================================
-// main.cpp — ESP32-C3 ShutterLink: Main Entry Point & State Machine
+// main.cpp — ESP32-C3 FPVShutter: Main Entry Point & State Machine
 // ============================================================================
 // Open-source camera control bridge.
 //

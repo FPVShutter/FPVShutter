@@ -1,7 +1,7 @@
 // ============================================================================
 // web_server.h — SoftAP + captive portal + REST API
 // ============================================================================
-// Connect a phone/PC to the ShutterLink Wi-Fi network and browse to
+// Connect a phone/PC to the FPVShutter Wi-Fi network and browse to
 // http://192.168.4.1 (captive portal pops up automatically on most devices).
 // ============================================================================
 

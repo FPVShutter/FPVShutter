@@ -37,6 +37,10 @@ target/
 .vscode/
 .idea/
 
+# pio compile commands
+compile_commands.json
+.pioconfig
+
 # System files
 .DS_Store
 Thumbs.db
