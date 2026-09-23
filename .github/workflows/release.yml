@@ -50,10 +50,10 @@ jobs:
       - name: Release
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: v2.2-pre 
-          name: v2.2-CBSHFPV Prerelease
+          tag_name: v2.2
+          name: FPVShutter v2.2
           files: ESP32-C3-SuperMini-V2.2.bin
-          prerelease: true
+          prerelease: false
           generate_release_notes: true
           token: ${{ github.token }}
   
