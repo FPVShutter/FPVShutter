@@ -2,7 +2,7 @@
 // camera_manager.h — Runtime camera backend dispatcher
 // ============================================================================
 // Owns the shared NimBLE stack and forwards calls to the active backend
-// (DJI Osmo / GoPro) selected in the Web UI.
+// (DJI Osmo Nano / DJI Osmo Action / GoPro) selected in the Web UI.
 // ============================================================================
 
 #ifndef CAMERA_MANAGER_H
@@ -27,8 +27,14 @@ const CameraTelemetry& camGetTelemetry();
 /// True when the active camera can accept commands right now.
 bool camIsReady();
 
-/// Human-readable name of the active backend ("DJI Osmo" / "GoPro").
+/// Human-readable name of the active backend ("DJI Osmo Nano" / "DJI Osmo
+/// Action" / "GoPro").
 const char* camGetName();
+
+/// Last connect-attempt error from the active backend (empty = no error).
+/// PROTOTYPE: added so api_core.cpp doesn't need to know about every
+/// backend's own GetLastError() individually.
+const char* camGetLastError();
 
 /// Switch camera brand at runtime (disconnects current backend, persists
 /// the choice).  Does NOT start a discovery scan — only changes which
@@ -41,12 +47,19 @@ void camKick();
 
 /// User-initiated discovery scan.  Switches the backend to the brand pill
 /// the user picked and calls that backend's startScan() once.  This is the
-/// ONLY entry point for a discovery scan — djiUpdate()/gpUpdate() will
-/// NOT auto-restart the scan after the 5 s window closes.
+/// ONLY entry point for a discovery scan — the per-model Update() functions
+/// will NOT auto-restart the scan after the 5 s window closes.
 void camStartUserScan();
 
 /// Disconnect current camera and stop any BLE operations (for UI disconnect).
 void camDisconnect();
+
+/// Apply a new BLE TX power level immediately (live, no reconnect needed).
+/// Caller is responsible for persisting the choice via settingsSave() —
+/// this only touches the radio. Safe to call any time after camInit(); a
+/// no-op if the BLE stack isn't up yet (the level will still take effect
+/// at the next camInit(), which reads it from settingsGet().blePower).
+void camSetBlePower(BlePowerLevel level);
 
 /// Sanitize device name to prevent XSS injection via BLE advertisements.
 /// Only allows alphanumeric, space, dash, underscore, dot. Replaces others with '?'.

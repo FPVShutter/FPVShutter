@@ -2,9 +2,9 @@
 // settings.h — Persistent runtime configuration (NVS via Preferences)
 // ============================================================================
 // Everything the user can change from the Web UI lives here and survives
-// reboots.  Defaults come from config.h.
+// reboots. Defaults come from config.h.
 //
-//   • Camera brand selection (DJI Osmo / GoPro HERO8+)
+//   • Camera brand selection (DJI Osmo Nano / DJI Osmo Action / GoPro HERO8+)
 //   • Record switch: RC channel index, threshold, debounce
 //   • Record-on-arm (+ optional stop on disarm)
 //   • Wi-Fi AP credentials for the Web UI
@@ -20,10 +20,33 @@
 // ──────────────────────────────────────────────────────────────────────────────
 // Camera brands
 // ──────────────────────────────────────────────────────────────────────────────
-
+// PROTOTYPE: split the old single CAMERA_DJI value into CAMERA_DJI_NANO
+// (hardware-verified) and CAMERA_DJI_ACTION (assumed compatible, untested —
+// see dji_action_camera.h). Existing numeric values are preserved for NVS
+// backward compatibility: anything already saved as camera=0 keeps meaning
+// exactly what it meant before (this project's actual paired camera, the
+// Nano) and camera=1 is untouched. CAMERA_DJI_ACTION is a new value (2), so
+// no migration is needed for existing saved settings/paired cameras.
 enum CameraType : uint8_t {
-    CAMERA_DJI   = 0,   // DJI Osmo Action family (DUML over BLE)
-    CAMERA_GOPRO = 1,   // GoPro HERO8+ (Open GoPro BLE API)
+    CAMERA_DJI_NANO   = 0,   // DJI Osmo Nano (DUML over BLE) — hardware-verified
+    CAMERA_GOPRO      = 1,   // GoPro HERO8+ (Open GoPro BLE API)
+    CAMERA_DJI_ACTION = 2,   // DJI Osmo Action family (DUML over BLE) — assumed compatible, untested
+};
+
+// ──────────────────────────────────────────────────────────────────────────────
+// BLE TX power levels
+// ──────────────────────────────────────────────────────────────────────────────
+// PROTOTYPE: simple 3-step picker (rather than a raw dBm value or a dynamic
+// scan-vs-connected scheme) for tuning how hard the C3's shared 2.4GHz radio
+// drives BLE. Lower levels trade BLE range for less RF footprint/current
+// draw — useful when a co-located ELRS receiver is being desensed by a
+// high-power, close-proximity BLE radio. HIGH reproduces the previous
+// hardcoded behaviour (ESP_PWR_LVL_P9) exactly, so existing installs are
+// unaffected until the user changes it.
+enum BlePowerLevel : uint8_t {
+    BLE_POWER_LOW    = 0,   // ~ -9 dBm — shortest range, least RF footprint
+    BLE_POWER_MEDIUM = 1,   // ~  0 dBm — balanced
+    BLE_POWER_HIGH   = 2,   // ~ +9 dBm — longest range (previous fixed default)
 };
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -66,13 +89,22 @@ struct ShutterSettings {
     uint16_t   debounceMs;           // Switch debounce time
     bool       recordOnArm;          // Start recording when FC arms
     bool       stopOnDisarm;         // Stop recording when FC disarms (needs recordOnArm)
-    uint16_t   stopOnDisarmDelayMs;  // NEW — grace period before stop-on-disarm fires (0 = instant, old behaviour)
+    uint16_t   stopOnDisarmDelayMs;  // Grace period before stop-on-disarm fires (0 = instant)
     bool       scanAll;              // Accept any advertiser during discovery
                                      // (otherwise filters by MAC OUI / name / mfr)
     char       apSsid[33];           // SoftAP SSID for the Web UI
     char       apPass[65];           // SoftAP password (min 8 chars, or empty = open)
     uint8_t    osdSlot[4];           // OsdSlotContent for Custom Message 1..4
-    uint8_t    wifiSwitchCh;         // RC channel toggling Wi-Fi (255 = disabled)
+    uint8_t    wifiSwitchCh;         // Optional RC channel toggling Wi-Fi (255 =
+                                     // no AUX toggle configured). Only takes
+                                     // effect while wifiApEnabled is true — see
+                                     // below.
+    bool       wifiApEnabled;        // Master Wi-Fi AP switch. false = the AP
+                                     // never starts (full radio-off), regardless
+                                     // of wifiSwitchCh. true = previous/default
+                                     // behaviour — AP allowed to run, optionally
+                                     // still toggled in-field by wifiSwitchCh.
+    BlePowerLevel blePower;          // BLE TX power (Low/Medium/High)
 
     SavedCamera cams[MAX_SAVED_CAMERAS];
     uint8_t     camCount;
@@ -90,7 +122,10 @@ void settingsReset();
 /// Access the live settings struct.
 ShutterSettings& settingsGet();
 
-/// Human-readable name of a camera type ("DJI Osmo" / "GoPro").
+/// Human-readable name of a camera type ("DJI Osmo Nano" / "DJI Osmo Action" / "GoPro").
 const char* cameraTypeName(CameraType type);
+
+/// Human-readable name of a BLE TX power level ("Low" / "Medium" / "High").
+const char* blePowerName(BlePowerLevel level);
 
 #endif // SETTINGS_H

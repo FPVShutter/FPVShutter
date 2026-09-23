@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ShutterLink — Open-source CamLink alternative for Betaflight</title>
-<meta name="description" content="ShutterLink is an open-source ESP32-C3 BLE bridge that turns an RC switch into record control for DJI Osmo Action and GoPro cameras, with live telemetry pushed into the Betaflight OSD.">
-<script>(function(){try{var t=localStorage.getItem('shutterlink.theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<title>FPVShutter — Open-source CamLink alternative for Betaflight</title>
+<meta name="description" content="FPVShutter is an open-source ESP32-C3 BLE bridge that turns an RC switch into record control for DJI Osmo Action and GoPro cameras, with live telemetry pushed into the Betaflight OSD.">
+<script>(function(){try{var t=localStorage.getItem('fpvshutter.theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
@@ -32,7 +32,7 @@
 <header class="site-header glass">
   <a href="index.html" class="brand">
     <svg><use href="#i-aperture"/></svg>
-    <span class="name">ShutterLink<span class="sub">Betaflight Cam Control</span></span>
+    <span class="name">FPVShutter<span class="sub">Betaflight Cam Control</span></span>
   </a>
   <button class="iconbtn" id="navToggle" aria-label="Toggle menu"><svg><use href="#i-menu"/></svg></button>
   <nav class="site-nav">
@@ -44,29 +44,28 @@
   </nav>
   <div class="header-actions">
     <button class="iconbtn" id="themeBtn" title="Toggle theme"><svg id="themeIco"><use href="#i-moon"/></svg></button>
-    <a class="iconbtn" href="https://github.com/Caboosh/shutterlink-CBSHFPV" target="_blank" rel="noopener" title="View on GitHub"><svg><use href="#i-github"/></svg></a>
+    <a class="iconbtn" href="https://github.com/FPVShutter/FPVShutter" target="_blank" rel="noopener" title="View on GitHub"><svg><use href="#i-github"/></svg></a>
   </div>
 </header>
 
 <main class="page">
 
   <section class="hero">
+    <h1>FPVShutter</h1>
+    <h2>Record control &amp; OSD telemetry for your FPV camera</h2>
     <span class="eyebrow">Open source · MIT licensed</span>
-    <h1>Record control &amp; OSD telemetry for your FPV camera</h1>
-    <p class="sub">ShutterLink is a free, open-source alternative to the itsFPV CamLink. An ESP32-C3
+    <p class="sub">FPVShutter is a free, open-source alternative to the itsFPV CamLink. An ESP32-C3
       bridges your radio switch (or arming state) straight to a DJI Osmo Action or GoPro camera over
       Bluetooth, and pushes live camera telemetry into the Betaflight OSD.</p>
-    <p class="sub" style="font-size:13.5px;margin-top:-14px">This repo (<code>CBSHFPV</code>) is
-      Caboosh's fork of <a href="https://github.com/rover1312/shutterlink" target="_blank" rel="noopener">rover1312/shutterlink</a>,
-      kept up to date here with additional changes and camera-backend work.</p>
+    <p class="sub" style="font-size:13.5px;margin-top:-14px">FPVShutter is based on <a href="https://github.com/rover1312/shutterlink" target="_blank" rel="noopener">rover1312/shutterlink</a>, with additional changes and camera-backend work.</p>
     <div class="hero-ctas">
       <a class="btn primary" href="setup.html">Get started <svg width="15" height="15"><use href="#i-arrow"/></svg></a>
-      <a class="btn" href="https://github.com/Caboosh/shutterlink-CBSHFPV" target="_blank" rel="noopener">View on GitHub</a>
+      <a class="btn" href="https://github.com/FPVShutter/FPVShutter" target="_blank" rel="noopener">View on GitHub</a>
       <a class="btn" href="console.html">Open Configurator</a>
     </div>
     <div class="hero-links">
       <a href="https://github.com/rover1312/shutterlink" target="_blank" rel="noopener">Forked from rover1312/shutterlink</a>
-      <a href="https://github.com/Caboosh/shutterlink-CBSHFPV/releases" target="_blank" rel="noopener">Latest release</a>
+      <a href="https://github.com/FPVShutter/FPVShutter/releases" target="_blank" rel="noopener">Latest release</a>
       <a href="reference.html#repository-structure">Source layout</a>
       <a href="reference.html#credits">Credits &amp; protocol references</a>
     </div>
@@ -77,7 +76,7 @@
       <svg><use href="#i-layers"/></svg>
       <p><strong>Requires a Betaflight build with Custom Message OSD elements</strong>
         (<code>MSP2_SET_TEXT</code> 0x3007, custom message types 7–10). Betaflight 4.x and 4.5 are
-        <strong>not</strong> supported. ShutterLink is not affiliated with or endorsed by DJI, GoPro or
+        <strong>not</strong> supported. FPVShutter is not affiliated with or endorsed by DJI, GoPro or
         itsFPV — all protocols are based on public documentation and community reverse-engineering.</p>
     </div>
   </section>
@@ -150,7 +149,7 @@
       <div class="arrow"><svg width="20" height="20"><use href="#i-arrow"/></svg></div>
       <div class="node glass"><b>Flight controller</b><span>Betaflight · MSP over UART</span></div>
       <div class="arrow"><svg width="20" height="20"><use href="#i-arrow"/></svg></div>
-      <div class="node glass"><b>ESP32-C3</b><span>ShutterLink</span></div>
+      <div class="node glass"><b>ESP32-C3</b><span>FPVShutter</span></div>
       <div class="arrow"><svg width="20" height="20"><use href="#i-arrow"/></svg></div>
       <div class="node glass"><b>Camera</b><span>DJI DUML / GoPro Open BLE</span></div>
     </div>
@@ -164,7 +163,7 @@
       <div class="glass feature">
         <svg class="ic"><use href="#i-wifi"/></svg>
         <h3>Field Web UI</h3>
-        <p>The ESP32 runs a SoftAP (default SSID <code>ShutterLink</code>). Browse to
+        <p>The ESP32 runs a SoftAP (default SSID <code>FPVShutter</code>). Browse to
           <code>http://192.168.4.1</code> from any phone or PC.</p>
       </div>
       <div class="glass feature">
@@ -223,12 +222,12 @@
 </main>
 
 <footer class="site-footer">
-  <span>ShutterLink · MIT licensed · A fork of <a href="https://github.com/rover1312/shutterlink" target="_blank" rel="noopener">rover1312/shutterlink</a> · Not affiliated with DJI, GoPro or itsFPV</span>
+  <span>FPVShutter · MIT licensed · A fork of <a href="https://github.com/rover1312/shutterlink" target="_blank" rel="noopener">rover1312/shutterlink</a> · Not affiliated with DJI, GoPro or itsFPV</span>
   <div class="footer-links">
-    <a href="https://github.com/Caboosh/shutterlink-CBSHFPV" target="_blank" rel="noopener">GitHub</a>
+    <a href="https://github.com/FPVShutter/FPVShutter" target="_blank" rel="noopener">GitHub</a>
     <a href="https://github.com/rover1312/shutterlink" target="_blank" rel="noopener">Upstream</a>
-    <a href="https://github.com/Caboosh/shutterlink-CBSHFPV/releases" target="_blank" rel="noopener">Releases</a>
-    <a href="https://github.com/Caboosh/shutterlink-CBSHFPV/issues" target="_blank" rel="noopener">Issues</a>
+    <a href="https://github.com/FPVShutter/FPVShutter/releases" target="_blank" rel="noopener">Releases</a>
+    <a href="https://github.com/FPVShutter/FPVShutter/issues" target="_blank" rel="noopener">Issues</a>
     <a href="reference.html">Reference</a>
   </div>
 </footer>

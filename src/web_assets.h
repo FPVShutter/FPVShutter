@@ -2,7 +2,7 @@
 // web_assets.h — Embedded Glassmorphism Web UI (PROGMEM)
 // ============================================================================
 // Single-page app served at http://192.168.4.1 when connected to the
-// ShutterLink Wi-Fi network.
+// FPVShutter Wi-Fi network.
 //
 //   • Glassmorphism: frosted cards, backdrop blur, animated gradient blobs
 //   • Dark / light theme toggle (persisted in localStorage)
@@ -22,7 +22,7 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(<!DOCTYPE html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>ShutterLink</title>
+<title>FPVShutter</title>
 <style>
 :root{
   --font:'Segoe UI',system-ui,-apple-system,sans-serif;
@@ -247,7 +247,7 @@ footer{text-align:center;color:var(--dim);font-size:11.5px;padding:18px 0 6px}
 <header class="glass top">
   <div class="logo">
     <svg class="ic lg" style="color:var(--accent)"><use href="#i-aperture"/></svg>
-    <h1>ShutterLink<span class="sub">Betaflight Cam Control</span></h1>
+    <h1>FPVShutter<span class="sub">Betaflight Cam Control</span></h1>
   </div>
   <div class="pill" id="statePill"><span class="dot" id="stateDot"></span><span id="stateTxt">CONNECTING</span></div>
   <button class="iconbtn" id="themeBtn" title="Toggle theme">
@@ -368,7 +368,7 @@ footer{text-align:center;color:var(--dim);font-size:11.5px;padding:18px 0 6px}
         at boot so you can't lock yourself out.</div>
     </div>
     <div class="field"><label>Network name (SSID)<span id="lblSsid"></span></label>
-      <input type="text" id="inSsid" maxlength="32" placeholder="ShutterLink"></div>
+      <input type="text" id="inSsid" maxlength="32" placeholder="FPVShutter"></div>
     <div class="field"><label>Password (8–64 chars, empty = open)</label>
       <input type="password" id="inPass" maxlength="64" placeholder="unchanged"></div>
     <button class="btn primary" id="saveWifi">Save Wi-Fi &amp; restart AP</button>
@@ -486,7 +486,7 @@ footer{text-align:center;color:var(--dim);font-size:11.5px;padding:18px 0 6px}
     <div class="grid2">
       <div class="glass kpi"><div class="lbl">Free heap</div><div class="val" id="sHeap">--</div><div class="hint">bytes available</div></div>
       <div class="glass kpi"><div class="lbl">Uptime</div><div class="val" id="sUp">--</div><div class="hint" id="sIp">&nbsp;</div></div>
-      <div class="glass kpi"><div class="lbl">Firmware</div><div class="val" id="sVer">--</div><div class="hint">ShutterLink version</div></div>
+      <div class="glass kpi"><div class="lbl">Firmware</div><div class="val" id="sVer">--</div><div class="hint">FPVShutter version</div></div>
     </div>
     <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn danger" id="btnReboot">Reboot ESP32</button>
@@ -513,7 +513,7 @@ footer{text-align:center;color:var(--dim);font-size:11.5px;padding:18px 0 6px}
   </div>
 </section>
 
-<footer>ShutterLink v2.1 · ESP32-C3 · MSP + BLE bridge<br><span id="ftIp"></span></footer>
+<footer>FPVShutter v2.1 · ESP32-C3 · MSP + BLE bridge<br><span id="ftIp"></span></footer>
 
 <div id="toast" class="glass"></div>
 <script>

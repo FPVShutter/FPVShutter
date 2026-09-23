@@ -1,5 +1,5 @@
 // ============================================================================
-// site.js — shared chrome behaviour for the ShutterLink docs site
+// site.js — shared chrome behaviour for the FPVShutter docs site
 // Theme toggle, mobile nav, active-link highlighting, TOC scroll-spy.
 // No dependencies, no build step — same philosophy as the firmware's own
 // embedded Web UI.
@@ -7,7 +7,7 @@
 (function () {
   "use strict";
   const $ = (id) => document.getElementById(id);
-  const THEME_KEY = "shutterlink.theme";
+  const THEME_KEY = "fpvshutter.theme";
 
   /* ---------- theme toggle ---------- */
   function applyThemeIcon(theme) {

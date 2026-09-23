@@ -14,7 +14,7 @@
 #include <Arduino.h>
 
 // Firmware version string (shown in UI and OTA status endpoint)
-#define FIRMWARE_VERSION "v2.1.1-CBSHFPV"
+#define FIRMWARE_VERSION "v2.2"
 
 // ──────────────────────────────────────────────────────────────────────────────
 // UART / MSP Configuration
@@ -62,8 +62,9 @@
 // Default User Settings (editable at runtime via Web UI / stored in NVS)
 // ──────────────────────────────────────────────────────────────────────────────
 
-// Active camera backend: 0 = DJI Osmo Action, 1 = GoPro HERO8 and newer.
-#define DEFAULT_CAMERA_TYPE       CAMERA_DJI
+// Active camera backend: 0 = DJI Osmo Nano, 1 = GoPro HERO8 and newer,
+// 2 = DJI Osmo Action (assumed compatible, untested — see dji_action_camera.h).
+#define DEFAULT_CAMERA_TYPE       CAMERA_DJI_NANO
 
 // Zero-based index of the RC channel used as the "Record" switch.
 // In Betaflight, AUX1 = channel 5 (index 4), AUX4 = channel 8 (index 7), etc.
@@ -82,7 +83,7 @@
 #define DEFAULT_STOP_ON_DISARM    true
 
 // Configurable Delay (in ms) when disarmed, allowing for a grace period
-// when turtling out of a crash. 
+// when turtling out of a crash.
 #define DEFAULT_STOP_ON_DISARM_DELAY_MS 0 // Default is 0 (old behaviour), change this to increase the delay.
 
 // "Show all nearby devices" in the Camera tab.  When false, the BLE
@@ -93,8 +94,28 @@
 // written when the user explicitly taps "Pair & Save".
 #define DEFAULT_SCAN_ALL          false
 
-// RC channel used as a Wi-Fi on/off switch. 255 = disabled (AP always on).
+// Optional RC channel used as an in-field Wi-Fi on/off toggle. 255 = no AUX
+// toggle configured (the master switch below is the only thing gating the
+// AP). This is unrelated to whether the AP is allowed to run at all — see
+// DEFAULT_WIFI_AP_ENABLED.
 #define DEFAULT_WIFI_SWITCH_CH    255
+
+// Master Wi-Fi AP switch (Enabled/Disabled). true = the AP is allowed to
+// run — the previous, and only, behaviour: it comes up at boot and,
+// optionally, DEFAULT_WIFI_SWITCH_CH can still toggle it in-field. false =
+// the AP never starts (full Wi-Fi radio off), regardless of the AUX
+// channel above — the AUX toggle cannot override a disabled master. Meant
+// for RF-sensitive flights where even the ~200ms/1s SoftAP beacon
+// contention with a 2.4GHz ELRS link isn't wanted. Default true preserves
+// existing out-of-box behaviour exactly.
+#define DEFAULT_WIFI_AP_ENABLED   true
+
+// Default BLE TX power level — Low/Medium/High (BlePowerLevel in
+// settings.h). Lower levels reduce BLE range and RF footprint/current
+// draw, useful for reducing desense of a co-located ELRS receiver. HIGH
+// reproduces the previous hardcoded ESP_PWR_LVL_P9 value exactly, so
+// existing installs see no behaviour change until this is lowered.
+#define DEFAULT_BLE_POWER         BLE_POWER_HIGH
 
 // SoftAP credentials for the Web UI (password empty = open network).
 #define WIFI_AP_DEFAULT_SSID      "ShutterLink"

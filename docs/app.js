@@ -1,5 +1,5 @@
 // ============================================================================
-// app.js — ShutterLink Configurator (Web Serial)
+// app.js — FPVShutter Configurator (Web Serial)
 // ============================================================================
 // Talks to the firmware's serial_config.cpp line-oriented JSON protocol,
 // reachable over either of two ports:
@@ -126,7 +126,7 @@ function setConnected(isConnected, via) {
   connected = isConnected;
   $("connDot").classList.toggle("connected", isConnected);
   $("connLabel").textContent = isConnected
-    ? (via === "fc-uart" ? "Connected (FC passthrough)" : "Connected")
+    ? (via === "fc-uart" ? "Connected (BF passthrough)" : "Connected")
     : "Not connected";
   $("btnConnect").hidden = isConnected;
   $("btnDisconnect").hidden = !isConnected;
@@ -231,7 +231,7 @@ async function connect() {
 // `serialpassthrough …` → close Configurator → come back here and
 // reconnect to the same COM port. We drive the FC's CLI ourselves over the
 // port we just opened and then keep using that SAME connection as the
-// ShutterLink JSON channel — no second app, no reconnect.
+// FPVShutter JSON channel — no second app, no reconnect.
 //
 // This is the same technique ExpressLRS's own flashing tool
 // (BFinitPassthrough.py) uses to reach a receiver wired to an FC UART:
@@ -249,8 +249,8 @@ async function connect() {
 // Rather than hardcode one scheme (and break on the other), we run `serial`
 // ourselves first and read which style this firmware actually prints.
 const FC_CLI_SETTLE_MS = 400;
-const LS_UART_KEY = "shutterlink.fcUartNumber";
-const LS_BAUD_KEY = "shutterlink.fcUartBaud";
+const LS_UART_KEY = "fpvshutter.fcUartNumber";
+const LS_BAUD_KEY = "fpvshutter.fcUartBaud";
 
 /// Pick the argument `serialpassthrough` wants for `uartNumber`, based on
 /// what the `serial` command actually printed (see block comment above).
@@ -736,7 +736,7 @@ function wireStaticActions() {
   $("btnStop").addEventListener("click", (e) =>
     runAction(e.target, () => sendCommand({ path: "command", cmd: "stop" })));
   $("btnReboot").addEventListener("click", (e) => {
-    if (!confirm("Reboot the ShutterLink device?")) return;
+    if (!confirm("Reboot the FPVShutter device?")) return;
     runAction(e.target, () => sendCommand({ path: "command", cmd: "reboot" }));
   });
 

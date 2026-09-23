@@ -65,7 +65,7 @@
 #include "json_scan.h"
 #include "msp_protocol.h"
 #include "fc_status.h"
-#include "web_server.h"   // webInit()
+#include "web_server.h"   // webInit(), webStop()
 #include <Update.h>
 #include "mbedtls/base64.h"
 
@@ -283,9 +283,16 @@ static void dispatchLine(Print &out, const String &line, bool viaFcUart) {
 
     } else if (path == "settings") {
         bool apNeedsRestart = false;
+        bool apShouldStop = false;
         char err[80];
-        if (!apiApplySettings(line, apNeedsRestart, err, sizeof(err))) {
+        if (!apiApplySettings(line, apNeedsRestart, apShouldStop, err, sizeof(err))) {
             sendErr(out, err);
+        } else if (apShouldStop) {
+            // Over Serial/Serial1, unlike the Wi-Fi REST API, tearing down
+            // the AP doesn't risk losing this reply -- send it either way
+            // for symmetry with web_server.cpp's handleSettingsPost().
+            sendOkExtra(out, "\"apStop\":true");
+            webStop();
         } else if (apNeedsRestart) {
             sendOkExtra(out, "\"apRestart\":true");
             webInit();
