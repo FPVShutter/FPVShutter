@@ -54,6 +54,13 @@ void camStartUserScan();
 /// Disconnect current camera and stop any BLE operations (for UI disconnect).
 void camDisconnect();
 
+/// Apply a new BLE TX power level immediately (live, no reconnect needed).
+/// Caller is responsible for persisting the choice via settingsSave() —
+/// this only touches the radio. Safe to call any time after camInit(); a
+/// no-op if the BLE stack isn't up yet (the level will still take effect
+/// at the next camInit(), which reads it from settingsGet().blePower).
+void camSetBlePower(BlePowerLevel level);
+
 /// Sanitize device name to prevent XSS injection via BLE advertisements.
 /// Only allows alphanumeric, space, dash, underscore, dot. Replaces others with '?'.
 void sanitizeDeviceName(char* dest, const char* src, size_t maxSize);

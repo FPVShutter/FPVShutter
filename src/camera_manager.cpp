@@ -6,6 +6,11 @@
 // single "dji_camera" backend has been split into dji_nano_camera.cpp
 // (hardware-verified) and dji_action_camera.cpp (assumed compatible,
 // untested). See PROTOTYPE_NOTES.md.
+//
+// PROTOTYPE: BLE TX power is now a runtime Low/Medium/High setting
+// (settingsGet().blePower) instead of a hardcoded ESP_PWR_LVL_P9, applied
+// at camInit() and live-changeable via camSetBlePower() (wired up from
+// api_core.cpp's apiApplySettings()). See PROTOTYPE_NOTES.md.
 // ============================================================================
 
 #include "camera_manager.h"
@@ -70,6 +75,18 @@ static void initMutexes() {
 
 static bool _stackReady = false;
 
+// Map the simple Low/Medium/High picker onto actual esp_power_level_t
+// values. HIGH reproduces what this used to be unconditionally hardcoded
+// to, so existing installs see no change until the setting is lowered.
+static esp_power_level_t blePowerToEspLevel(BlePowerLevel level) {
+    switch (level) {
+        case BLE_POWER_LOW:    return ESP_PWR_LVL_N9;   // ~ -9 dBm
+        case BLE_POWER_MEDIUM: return ESP_PWR_LVL_N0;   // ~  0 dBm
+        case BLE_POWER_HIGH:
+        default:                return ESP_PWR_LVL_P9;   // ~ +9 dBm
+    }
+}
+
 static void shutdownActiveBackend() {
     // Stop any scan and drop the current BLE connection before switching.
     NimBLEScan *pScan = NimBLEDevice::getScan();
@@ -107,8 +124,9 @@ void camInit() {
     initMutexes();
 
     DBG("CAM: Initialising NimBLE stack...");
-    NimBLEDevice::init("ESP32-FPVShutter");
-    NimBLEDevice::setPower(ESP_PWR_LVL_P9);
+    NimBLEDevice::init("ESP32-ShutterLink");
+    NimBLEDevice::setPower(blePowerToEspLevel(settingsGet().blePower));
+    DBG("CAM: BLE TX power = %s", blePowerName(settingsGet().blePower));
 
     // Bonding enabled (needed for GoPro LE pairing); Just Works IO caps.
     NimBLEDevice::setSecurityAuth(true, false, true);
@@ -287,4 +305,13 @@ void camStartUserScan() {
     if (g_scanMutex != NULL) {
         xSemaphoreGive(g_scanMutex);
     }
+}
+
+// Apply a new BLE TX power level live. Safe to call any time after
+// camInit() -- e.g. from api_core.cpp when the user changes the picker in
+// the Web UI or bench console, without needing to reconnect the camera.
+void camSetBlePower(BlePowerLevel level) {
+    if (!_stackReady) return;
+    NimBLEDevice::setPower(blePowerToEspLevel(level));
+    DBG("CAM: BLE TX power set to %s", blePowerName(level));
 }

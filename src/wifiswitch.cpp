@@ -1,6 +1,14 @@
 // ============================================================================
 // wifiswitch.cpp — Toggle the Web-UI Wi-Fi AP from a spare radio switch
 // ============================================================================
+// PROTOTYPE: the optional AUX toggle below now only takes effect while the
+// new master Wi-Fi AP switch (settingsGet().wifiApEnabled) is enabled. When
+// the master is disabled, wifiSwitchUpdate() returns immediately — the AUX
+// channel can turn the AP off (as it always could) but can never turn it
+// back on while the master itself is off. The master switch is applied
+// directly from main.cpp (boot) and api_core.cpp (live changes via the Web
+// UI / bench console), not from here.
+// ============================================================================
 
 #include "wifiswitch.h"
 #include "config.h"
@@ -27,7 +35,10 @@ static uint32_t _lastRawChange= 0;
 
 void wifiSwitchInit() {
     _rcValid = false;
-    _stableOn = true;   // AP starts enabled at boot (lock-out protection)
+    _stableOn = true;   // Assumed AUX position at boot (lock-out protection);
+                         // irrelevant while wifiSwitchCh is unset, and
+                         // irrelevant while the master AP switch is off,
+                         // since wifiSwitchUpdate() won't act on it either way.
 }
 
 void wifiSwitchFeedRc(uint16_t rcValueUsec) {
@@ -41,7 +52,8 @@ void wifiSwitchFeedRc(uint16_t rcValueUsec) {
 
 void wifiSwitchUpdate() {
     const ShutterSettings &cfg = settingsGet();
-    if (cfg.wifiSwitchCh > 15) return;   // Feature disabled via Web UI
+    if (!cfg.wifiApEnabled) return;      // Master switch off — AUX cannot override
+    if (cfg.wifiSwitchCh > 15) return;   // No AUX toggle configured — AP just stays on
 
     if (!_rcValid) return;
 

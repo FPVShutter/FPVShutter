@@ -34,6 +34,22 @@ enum CameraType : uint8_t {
 };
 
 // ──────────────────────────────────────────────────────────────────────────────
+// BLE TX power levels
+// ──────────────────────────────────────────────────────────────────────────────
+// PROTOTYPE: simple 3-step picker (rather than a raw dBm value or a dynamic
+// scan-vs-connected scheme) for tuning how hard the C3's shared 2.4GHz radio
+// drives BLE. Lower levels trade BLE range for less RF footprint/current
+// draw — useful when a co-located ELRS receiver is being desensed by a
+// high-power, close-proximity BLE radio. HIGH reproduces the previous
+// hardcoded behaviour (ESP_PWR_LVL_P9) exactly, so existing installs are
+// unaffected until the user changes it.
+enum BlePowerLevel : uint8_t {
+    BLE_POWER_LOW    = 0,   // ~ -9 dBm — shortest range, least RF footprint
+    BLE_POWER_MEDIUM = 1,   // ~  0 dBm — balanced
+    BLE_POWER_HIGH   = 2,   // ~ +9 dBm — longest range (previous fixed default)
+};
+
+// ──────────────────────────────────────────────────────────────────────────────
 // OSD slot contents (which info goes into Betaflight Custom Message 1..4)
 // ──────────────────────────────────────────────────────────────────────────────
 
@@ -79,7 +95,16 @@ struct ShutterSettings {
     char       apSsid[33];           // SoftAP SSID for the Web UI
     char       apPass[65];           // SoftAP password (min 8 chars, or empty = open)
     uint8_t    osdSlot[4];           // OsdSlotContent for Custom Message 1..4
-    uint8_t    wifiSwitchCh;         // RC channel toggling Wi-Fi (255 = disabled)
+    uint8_t    wifiSwitchCh;         // Optional RC channel toggling Wi-Fi (255 =
+                                     // no AUX toggle configured). Only takes
+                                     // effect while wifiApEnabled is true — see
+                                     // below.
+    bool       wifiApEnabled;        // Master Wi-Fi AP switch. false = the AP
+                                     // never starts (full radio-off), regardless
+                                     // of wifiSwitchCh. true = previous/default
+                                     // behaviour — AP allowed to run, optionally
+                                     // still toggled in-field by wifiSwitchCh.
+    BlePowerLevel blePower;          // BLE TX power (Low/Medium/High)
 
     SavedCamera cams[MAX_SAVED_CAMERAS];
     uint8_t     camCount;
@@ -99,5 +124,8 @@ ShutterSettings& settingsGet();
 
 /// Human-readable name of a camera type ("DJI Osmo Nano" / "DJI Osmo Action" / "GoPro").
 const char* cameraTypeName(CameraType type);
+
+/// Human-readable name of a BLE TX power level ("Low" / "Medium" / "High").
+const char* blePowerName(BlePowerLevel level);
 
 #endif // SETTINGS_H

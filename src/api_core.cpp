@@ -15,6 +15,20 @@
 // all, DJI or GoPro. This also means DJI Osmo Action is already selectable
 // via {"camera":2} (bench console / REST API) even before the Web UI grows
 // a third brand pill — see PROTOTYPE_NOTES.md.
+//
+// PROTOTYPE: two new settings keys, both aimed at reducing 2.4GHz
+// contention/interference with a co-located ELRS receiver:
+//   • "wifiApEnabled" (bool) — master Wi-Fi AP switch. Hybrid with the
+//     existing optional "wifiSwitch" AUX channel: that AUX channel still
+//     works exactly as it always did as an in-field on/off toggle, but
+//     only while this master switch is true. Turning it off is a hard
+//     override — the AP cannot be brought back up by the AUX channel while
+//     the master is off. Applying the change live (starting/stopping the
+//     AP itself) is deferred to the caller via apNeedsRestart/apShouldStop,
+//     the same pattern already used for ssid/pass changes, so the "ok"
+//     response has a chance to go out over the AP before it's torn down.
+//   • "blePower" (0/1/2 = Low/Medium/High, BlePowerLevel) — applied
+//     immediately via camSetBlePower(), no reconnect needed.
 // ============================================================================
 
 #include "api_core.h"
@@ -114,7 +128,8 @@ size_t apiBuildStatusJson(char *buf, size_t bufLen) {
         "\"auxCh\":%u,\"thr\":%u,\"deb\":%u},"
         "\"slots\":[%d,%d,%d,%d],"
         "\"osd\":[\"%s\",\"%s\",\"%s\",\"%s\"],"
-        "\"wifiSwitch\":%d,\"wifiOn\":%s,\"scanAll\":%s,"
+        "\"wifiSwitch\":%d,\"wifiOn\":%s,\"wifiApEnabled\":%s,"
+        "\"blePower\":%d,\"blePowerName\":\"%s\",\"scanAll\":%s,"
         "\"lastError\":\"%s\","
         "\"cams\":%s,\"pending_cams\":%s,\"scanning\":%s,"
         "\"fc\":{\"alive\":%s,\"armed\":%s,\"vbat10\":%u,\"rssi\":%u,"
@@ -134,6 +149,8 @@ size_t apiBuildStatusJson(char *buf, size_t bufLen) {
         osdSlotText(0), osdSlotText(1), osdSlotText(2), osdSlotText(3),
         (cfg.wifiSwitchCh <= 15) ? (int)cfg.wifiSwitchCh : -1,
         webIsUp() ? "true" : "false",
+        cfg.wifiApEnabled ? "true" : "false",
+        (int)cfg.blePower, blePowerName(cfg.blePower),
         cfg.scanAll ? "true" : "false",
         safeErr,
         cams, pending,
@@ -151,15 +168,17 @@ size_t apiBuildStatusJson(char *buf, size_t bufLen) {
 // Settings
 // ──────────────────────────────────────────────────────────────────────────────
 
-bool apiApplySettings(const String &body, bool &apNeedsRestart,
+bool apiApplySettings(const String &body, bool &apNeedsRestart, bool &apShouldStop,
                        char *errBuf, size_t errBufLen) {
     apNeedsRestart = false;
+    apShouldStop = false;
 
     if (!jsonHas(body, "camera") && !jsonHas(body, "auxChannel") &&
         !jsonHas(body, "recordOnArm") && !jsonHas(body, "ssid") &&
         !jsonHas(body, "slot0") && !jsonHas(body, "slot1") &&
         !jsonHas(body, "slot2") && !jsonHas(body, "slot3") &&
-        !jsonHas(body, "wifiSwitch") && !jsonHas(body, "scanAll") &&
+        !jsonHas(body, "wifiSwitch") && !jsonHas(body, "wifiApEnabled") &&
+        !jsonHas(body, "blePower") && !jsonHas(body, "scanAll") &&
         !jsonHas(body, "threshold") && !jsonHas(body, "debounce") &&
         !jsonHas(body, "stopOnDisarm") && !jsonHas(body, "stopOnDisarmDelay")) {
         if (errBuf) strlcpy(errBuf, "no recognized keys", errBufLen);
@@ -216,6 +235,32 @@ bool apiApplySettings(const String &body, bool &apNeedsRestart,
             if (errBuf) strlcpy(errBuf, "wifi switch channel out of range", errBufLen);
             return false;
         }
+    }
+
+    // Master Wi-Fi AP switch. Only the transition matters — applying the
+    // radio change itself is deferred to the caller (web_server.cpp /
+    // serial_config.cpp) via apNeedsRestart/apShouldStop, so the response
+    // to THIS request can be sent before the AP potentially goes away.
+    if (jsonHas(body, "wifiApEnabled")) {
+        bool newVal = jsonGetBool(body, "wifiApEnabled");
+        if (newVal != cfg.wifiApEnabled) {
+            cfg.wifiApEnabled = newVal;
+            if (newVal) {
+                apNeedsRestart = true;   // AP was off — bring it up
+            } else {
+                apShouldStop = true;     // AP was allowed — tear it down
+            }
+        }
+    }
+
+    if (jsonHas(body, "blePower")) {
+        long p = jsonGetNum(body, "blePower");
+        if (p < BLE_POWER_LOW || p > BLE_POWER_HIGH) {
+            if (errBuf) strlcpy(errBuf, "invalid BLE power level", errBufLen);
+            return false;
+        }
+        cfg.blePower = (BlePowerLevel)p;
+        camSetBlePower(cfg.blePower);   // Applies live immediately, no reconnect
     }
 
     for (uint8_t s = 0; s < 4; s++) {

@@ -63,10 +63,22 @@ static void sendJsonError(const char *msg) {
 static void handleSettingsPost() {
     String body = _server.arg("plain");
     bool apNeedsRestart = false;
+    bool apShouldStop = false;
     char err[80];
 
-    if (!apiApplySettings(body, apNeedsRestart, err, sizeof(err))) {
+    if (!apiApplySettings(body, apNeedsRestart, apShouldStop, err, sizeof(err))) {
         sendJsonError(err);
+        return;
+    }
+
+    // PROTOTYPE: the master wifiApEnabled switch turning OFF tears down the
+    // very AP this response is being sent over. Send the ack first (same
+    // "respond before disrupting Wi-Fi" pattern already used below for
+    // apNeedsRestart and in handleCommand() for reboot), then stop.
+    if (apShouldStop) {
+        _server.send(200, "application/json", "{\"ok\":true,\"apStop\":true}");
+        delay(200);
+        webStop();
         return;
     }
 

@@ -1,5 +1,5 @@
 // ============================================================================
-// main.cpp — ESP32-C3 FPVShutter: Main Entry Point & State Machine
+// main.cpp — ESP32-C3 ShutterLink: Main Entry Point & State Machine
 // ============================================================================
 // Open-source camera control bridge.
 //
@@ -141,9 +141,9 @@ static void mspReadIncoming() {
 
         if (mspParseByte(byte, msg)) {
             // ── Complete MSP message received ───────────────────────────
-            DBG("MSP: received CMD=%u size=%u valid=%d error=%d", 
+            DBG("MSP: received CMD=%u size=%u valid=%d error=%d",
                 msg.cmd, msg.payloadSize, msg.valid ? 1 : 0, msg.isError ? 1 : 0);
-            
+
             fcStatusFeed(msg);   // Arm state / voltage / identity
 
             if (msg.cmd == MSP_RC && msg.valid && !msg.isError) {
@@ -171,7 +171,7 @@ void setup() {
     delay(1000);  // Allow USB CDC to enumerate
 
     DBG("============================================");
-    DBG("  ESP32-C3 FPVShutter v2.0");
+    DBG("  ESP32-C3 ShutterLink v2.0");
     DBG("  Betaflight <-> DJI Osmo / GoPro bridge");
     DBG("============================================");
 
@@ -199,8 +199,19 @@ void setup() {
     camInit();
 
     // ── Web UI (SoftAP + captive portal + REST API) ─────────────────────
+    // PROTOTYPE: the AP now only comes up at boot if the master
+    // wifiApEnabled switch is on — the old lock-out protection (AP always
+    // starts) still applies whenever that master switch is left at its
+    // default (true). When it's off, the radio simply never comes up;
+    // toggling it back on from the Web UI isn't possible over Wi-Fi in
+    // that case, but the bench console (USB serial or FC-UART passthrough)
+    // always works regardless of AP state.
     wifiSwitchInit();
-    webInit();
+    if (settingsGet().wifiApEnabled) {
+        webInit();
+    } else {
+        DBG("WEB: AP disabled at boot (wifiApEnabled=false)");
+    }
 
     // ── Web Serial bench config protocol (USB port used for DBG output,   ─
     // ── plus the FC UART when reached via Betaflight serial passthrough) ─
@@ -258,7 +269,7 @@ void loop() {
     scanResultsEvictStale();   // Evict stale scan entries (TTL 15s)
     webUpdate();
     serialConfigUpdate();
-    
+
     // 8. Update status LED blink pattern.
     updateStatusLED();
 

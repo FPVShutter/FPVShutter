@@ -19,6 +19,8 @@ static void applyDefaults() {
     _s.stopOnDisarmDelayMs = DEFAULT_STOP_ON_DISARM_DELAY_MS;   // Default Grace Period is 0ms, so instant stop of recording like the original behaviour
     _s.scanAll             = DEFAULT_SCAN_ALL;
     _s.wifiSwitchCh        = DEFAULT_WIFI_SWITCH_CH;
+    _s.wifiApEnabled       = DEFAULT_WIFI_AP_ENABLED;
+    _s.blePower            = (BlePowerLevel)DEFAULT_BLE_POWER;
 
     strlcpy(_s.apSsid, WIFI_AP_DEFAULT_SSID, sizeof(_s.apSsid));
     strlcpy(_s.apPass, WIFI_AP_DEFAULT_PASS, sizeof(_s.apPass));
@@ -47,6 +49,8 @@ void settingsLoad() {
     _s.stopOnDisarmDelayMs = _prefs.getUShort("sodDelay", _s.stopOnDisarmDelayMs);
     _s.scanAll             = _prefs.getBool("scanAll", _s.scanAll);
     _s.wifiSwitchCh        = _prefs.getUChar("wifiCh", _s.wifiSwitchCh);
+    _s.wifiApEnabled       = _prefs.getBool("apEn", _s.wifiApEnabled);
+    _s.blePower            = (BlePowerLevel)_prefs.getUChar("blePwr", _s.blePower);
 
     char buf[65] = {0};
     if (_prefs.getString("ssid", buf, sizeof(buf)) > 0) strlcpy(_s.apSsid, buf, sizeof(_s.apSsid));
@@ -69,14 +73,16 @@ void settingsLoad() {
     if (_s.stopOnDisarmDelayMs > 15000)     _s.stopOnDisarmDelayMs = 15000;
     if (_s.wifiSwitchCh > 15 && _s.wifiSwitchCh != 255)
                                             _s.wifiSwitchCh = 255;
+    if (_s.blePower > BLE_POWER_HIGH)       _s.blePower = BLE_POWER_HIGH;
 
     _prefs.end();
 
     // Saved camera registry lives in the same NVS namespace.
     camRegistryLoad();
 
-    DBG("SETTINGS: Loaded (cam=%u aux=%u thr=%u deb=%u roa=%d)",
-        _s.camera, _s.auxChannelIndex, _s.rcThresholdUs, _s.debounceMs, _s.recordOnArm);
+    DBG("SETTINGS: Loaded (cam=%u aux=%u thr=%u deb=%u roa=%d apEn=%d blePwr=%s)",
+        _s.camera, _s.auxChannelIndex, _s.rcThresholdUs, _s.debounceMs, _s.recordOnArm,
+        _s.wifiApEnabled, blePowerName(_s.blePower));
 }
 
 void settingsSave() {
@@ -93,6 +99,8 @@ void settingsSave() {
     _prefs.putUShort("sodDelay", _s.stopOnDisarmDelayMs);
     _prefs.putBool("scanAll", _s.scanAll);
     _prefs.putUChar("wifiCh", _s.wifiSwitchCh);
+    _prefs.putBool("apEn", _s.wifiApEnabled);
+    _prefs.putUChar("blePwr", _s.blePower);
     _prefs.putString("ssid", _s.apSsid);
     _prefs.putString("apkey", _s.apPass);
 
@@ -120,5 +128,14 @@ const char* cameraTypeName(CameraType type) {
         case CAMERA_DJI_ACTION: return "DJI Osmo Action";
         case CAMERA_DJI_NANO:
         default:                return "DJI Osmo Nano";
+    }
+}
+
+const char* blePowerName(BlePowerLevel level) {
+    switch (level) {
+        case BLE_POWER_LOW:    return "Low";
+        case BLE_POWER_MEDIUM: return "Medium";
+        case BLE_POWER_HIGH:
+        default:                return "High";
     }
 }
