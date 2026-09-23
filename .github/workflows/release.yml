@@ -27,14 +27,11 @@ jobs:
     
       - name: Build PlatformIO Project
         run: pio run
-
-      - name: Rename Artifact
-        run: mv .pio/build/esp32c3/firmware.bin ESP32-C3-SuperMini-V2.2.bin
     
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v7
         with:
-          name: ESP32-C3-SuperMini-V2.2.bin
+          name: firmware.bin
           path: .pio/build/esp32c3/
           
   create_release:
@@ -45,7 +42,10 @@ jobs:
       - name: Grab built Artifact
         uses: actions/download-artifact@v8
         with:
-          name: ESP32-C3-SuperMini-V2.2.bin
+          name: firmware.bin
+
+      - name: Rename Artifact
+        run: mv firmware.bin ESP32-C3-SuperMini-V2.2.bin
           
       - name: Release
         uses: softprops/action-gh-release@v3
