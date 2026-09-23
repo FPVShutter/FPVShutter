@@ -1,15 +1,21 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Reference — FPVShutter</title>
 <meta name="description" content="Protocol reference for FPVShutter: Web Serial bench-console protocol, Betaflight passthrough mechanics, DJI/GoPro BLE camera protocols, REST API, repository layout, roadmap and credits.">
-<script>(function(){try{var t=localStorage.getItem('fpvshutter.theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
-<link rel="stylesheet" href="assets/site.css">
+<link rel="stylesheet" href="assets/web.css">
+<link href="https://cdn.jsdelivr.net/npm/flowbite@4.0.1/dist/flowbite.min.css" rel="stylesheet" />
+<script>
+    // On page load or when changing themes, best to add inline in `head` to avoid FOUC
+    if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+    } else {
+        document.documentElement.classList.remove('dark')
+    }
+</script>
 </head>
-<body>
-<div class="bg"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
 <svg width="0" height="0" style="position:absolute">
 <defs>
 <symbol id="i-aperture" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 3.5 L15.8 9.8 M20.9 9.4 L13.4 10.9 M17.8 19.4 L12.9 13.1 M6.4 19 L10.6 12.9 M3.2 10.2 L10.5 11.4 M8 4.9 L11.4 11" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".85"/><circle cx="12" cy="12" r="3.1" fill="currentColor" opacity=".22"/></symbol>
@@ -17,27 +23,51 @@
 <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.2 13.9 A8.4 8.4 0 1 1 10 3.7 A6.8 6.8 0 0 0 20.2 13.9 Z" fill="currentColor" opacity=".28"/><path d="M20.2 13.9 A8.4 8.4 0 1 1 10 3.7 A6.8 6.8 0 0 0 20.2 13.9 Z" fill="none" stroke="currentColor" stroke-width="1.7"/></symbol>
 <symbol id="i-menu" viewBox="0 0 24 24"><g stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></g></symbol>
 <symbol id="i-github" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2C6.48 2 2 6.58 2 12.25c0 4.53 2.87 8.37 6.84 9.73.5.1.68-.22.68-.5 0-.24-.01-.87-.01-1.71-2.78.62-3.37-1.37-3.37-1.37-.45-1.19-1.11-1.5-1.11-1.5-.91-.64.07-.63.07-.63 1 .07 1.53 1.05 1.53 1.05.89 1.57 2.34 1.12 2.91.85.09-.66.35-1.12.63-1.38-2.22-.26-4.56-1.14-4.56-5.07 0-1.12.39-2.04 1.03-2.75-.1-.26-.45-1.32.1-2.75 0 0 .84-.28 2.75 1.05a9.3 9.3 0 0 1 2.5-.35c.85 0 1.71.12 2.5.35 1.91-1.33 2.75-1.05 2.75-1.05.55 1.43.2 2.49.1 2.75.64.71 1.03 1.63 1.03 2.75 0 3.94-2.34 4.8-4.57 5.06.36.32.68.94.68 1.9 0 1.37-.01 2.47-.01 2.81 0 .28.18.61.69.5A10.26 10.26 0 0 0 22 12.25C22 6.58 17.52 2 12 2Z"/></symbol>
+<symbol id="i-cam" viewBox="0 0 24 24"><rect x="2.8" y="6.4" width="18.4" height="12.4" rx="3.2" fill="currentColor" opacity=".16"/><rect x="2.8" y="6.4" width="18.4" height="12.4" rx="3.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8.2 6.2 L9.6 3.8 h4.8 l1.4 2.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="12.6" r="3.4" fill="currentColor" opacity=".35"/><circle cx="12" cy="12.6" r="3.4" fill="none" stroke="currentColor" stroke-width="1.7"/></symbol>
+<symbol id="i-sliders" viewBox="0 0 24 24"><g stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></g><circle cx="9" cy="7" r="2.5" fill="currentColor" opacity=".35"/><circle cx="9" cy="7" r="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="15" cy="12" r="2.5" fill="currentColor" opacity=".35"/><circle cx="15" cy="12" r="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="7" cy="17" r="2.5" fill="currentColor" opacity=".35"/><circle cx="7" cy="17" r="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/></symbol>
+<symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3.4 L21 8.2 L12 13 L3 8.2 Z" fill="currentColor" opacity=".25"/><path d="M12 3.4 L21 8.2 L12 13 L3 8.2 Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M3.4 12.4 L12 17 L20.6 12.4 M3.4 16.6 L12 21.2 L20.6 16.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="i-wifi" viewBox="0 0 24 24"><path d="M3.5 9.4 C8.4 4.9 15.6 4.9 20.5 9.4 M6.3 12.7 C9.6 9.7 14.4 9.7 17.7 12.7 M9.1 15.9 C10.8 14.4 13.2 14.4 14.9 15.9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="19" r="1.5" fill="currentColor"/></symbol>
+<symbol id="i-bt" viewBox="0 0 24 24"><path d="M6.5 7.5 L17 16.5 L11.8 21 V3 L17 7.5 L6.5 16.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 <symbol id="i-usb" viewBox="0 0 24 24"><path d="M12 3v9m0 0-3 3m3-3 3 3M8 13a4 4 0 1 0 8 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="20" r="1.6" fill="currentColor"/></symbol>
+<symbol id="i-chip" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2.2" fill="currentColor" opacity=".16"/><rect x="6" y="6" width="12" height="12" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.7"/><rect x="9.6" y="9.6" width="4.8" height="4.8" rx="1" fill="currentColor" opacity=".5"/><g stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M9 2.8v3.2M15 2.8v3.2M9 18v3.2M15 18v3.2M2.8 9h3.2M2.8 15h3.2M18 9h3.2M18 15h3.2"/></g></symbol>
+<symbol id="i-book" viewBox="0 0 24 24"><path d="M4 4.6c2.6-1 5.4-1 8 0v14.8c-2.6-1-5.4-1-8 0Z" fill="currentColor" opacity=".16"/><path d="M4 4.6c2.6-1 5.4-1 8 0v14.8c-2.6-1-5.4-1-8 0ZM20 4.6c-2.6-1-5.4-1-8 0v14.8c2.6-1 5.4-1 8 0Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+<symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h13m0 0-5-5m5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 </defs>
 </svg>
 
-<header class="site-header glass">
-  <a href="index.html" class="brand">
-    <svg><use href="#i-aperture"/></svg>
-    <span class="name">FPVShutter<span class="sub">Betaflight Cam Control</span></span>
-  </a>
-  <button class="iconbtn" id="navToggle" aria-label="Toggle menu"><svg><use href="#i-menu"/></svg></button>
-  <nav class="site-nav">
-    <a href="index.html">Home</a>
-    <a href="setup.html">Setup Guide</a>
-    <a href="webui.html">Web UI Guide</a>
-    <a href="console.html">Configurator</a>
-    <a href="reference.html">Reference</a>
+<body class="bg-neutral-200 text-white dark:bg-neutral-800 dark:text-white">
+<header>
+  <nav class="bg-neutral-800 fixed w-full z-20 top-0 start-0 border-b border-default">
+    <div class="max-w-screen-full flex flex-wrap items-center justify-between mx-auto p-4">
+        <a href="index.html" class="flex items-center space-x-3 rtl:space-x-reverse">
+        <svg class="inline w-12 h-12"><use href="#i-aperture"/></svg>
+        <span class="self-center text-xl text-heading font-semibold whitespace-nowrap">FPVShutter - Betaflight Cam Control</span>
+      </a>
+    <button data-collapse-toggle="navbar-default" type="button" class="inline-flex items-center p-2 w-10 h-10 justify-center text-sm text-body rounded-base md:hidden hover:bg-neutral-secondary-soft hover:text-heading focus:outline-none focus:ring-2 focus:ring-neutral-tertiary" aria-controls="navbar-default" aria-expanded="false">
+        <span class="sr-only">Open main menu</span>
+        <svg class="w-6 h-6" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-width="2" d="M5 7h14M5 12h14M5 17h14"/></svg>
+    </button>
+    <div class="hidden w-full md:block md:w-auto" id="navbar-default">
+      <ul class="font-medium flex flex-col p-4 md:p-0 mt-4 border border-default rounded-base bg-neutral-secondary-soft md:flex-row md:space-x-8 rtl:space-x-reverse md:mt-0 md:border-0 md:bg-neutral-primary">
+        <li>
+          <a href="index.html" class="block py-2 px-3 text-white bg-brand rounded md:bg-transparent md:text-fg-brand md:p-0" aria-current="page">Home</a>
+        </li>
+        <li>
+          <a href="setup.html" class="block py-2 px-3 text-heading rounded hover:bg-neutral-tertiary md:hover:bg-transparent md:border-0 md:hover:text-fg-brand md:p-0 md:dark:hover:bg-transparent">Setup</a>
+        </li>
+        <li>
+          <a href="webui.html" class="block py-2 px-3 text-heading rounded hover:bg-neutral-tertiary md:hover:bg-transparent md:border-0 md:hover:text-fg-brand md:p-0 md:dark:hover:bg-transparent">Web UI</a>
+        </li>
+        <li>
+          <a href="console.html" class="block py-2 px-3 text-heading rounded hover:bg-neutral-tertiary md:hover:bg-transparent md:border-0 md:hover:text-fg-brand md:p-0 md:dark:hover:bg-transparent">Configurator</a>
+        </li>
+        <li>
+          <a href="reference.html" class="block py-2 px-3 text-heading rounded hover:bg-neutral-tertiary md:hover:bg-transparent md:border-0 md:hover:text-fg-brand md:p-0 md:dark:hover:bg-transparent">Reference</a>
+        </li>
+      </ul>
+    </div>
+    </div>
   </nav>
-  <div class="header-actions">
-    <button class="iconbtn" id="themeBtn" title="Toggle theme"><svg id="themeIco"><use href="#i-moon"/></svg></button>
-    <a class="iconbtn" href="https://github.com/FPVShutter/FPVShutter" target="_blank" rel="noopener" title="View on GitHub"><svg><use href="#i-github"/></svg></a>
-  </div>
 </header>
 
 <main class="page">
@@ -79,15 +109,15 @@
             from this site — useful on the bench without joining the ESP32's Wi-Fi network, and for
             reading MSP without the Wi-Fi API's read-only restriction.</li>
         </ol>
-        <p>The logic behind both transports lives once, in <code>api_core.cpp</code> —
+        <p>The logic behind both transports is stored once, in <code>api_core.cpp</code> —
           <code>web_server.cpp</code>'s HTTP handlers and <code>serial_config.cpp</code>'s dispatcher are
-          both thin wrappers around the same <code>apiBuildStatusJson()</code> /
+          both thin wrappers around <code>apiBuildStatusJson()</code> /
           <code>apiApplySettings()</code> / <code>apiApplyCamera()</code> / <code>apiApplyCommand()</code>
           functions, so the two can't drift out of sync with each other.</p>
       </section>
 
       <section class="section" id="web-serial-protocol">
-        <h2>Web Serial bench-console protocol</h2>
+        <h2>Web Serial Configurator protocol</h2>
         <p><code>serial_config.cpp</code> implements a line-delimited JSON protocol over the same USB port
           used for flashing and <code>DBG()</code> output (<code>Serial</code>, 115200 baud).
           <code>DBG()</code> lines never start with <code>{</code>, so the console filters on that to tell
@@ -111,16 +141,16 @@
       </section>
 
       <section class="section" id="betaflight-passthrough">
-        <h2>Reaching it without a USB cable to the C3</h2>
+        <h2>Using Betaflight Passthrough to Connect to the C3</h2>
         <p>Once the ESP32-C3 is installed in the quad, its own USB-C port is often buried or hard to
-          reach. Since the C3 is already wired to a free FC UART for MSP, the same bench-config protocol
+          reach. Since the C3 is already wired to a free FC UART for MSP, the configurator protocol
           also listens on that UART (<code>Serial1</code>), reachable through
           <strong>Betaflight's serial passthrough</strong> feature via the FC's own, more accessible USB
           port — no extra cable, no disassembly.</p>
         <p><strong>One click, no Betaflight Configurator needed:</strong> the
-          <a href="console.html">Configurator</a> drives this itself. Expand "C3 not reachable over USB?
-          Connect via Betaflight passthrough instead", enter the FC UART number wired to the C3 and the
-          baud rate, then hit <strong>Connect via FC passthrough</strong>. Behind the scenes the page:</p>
+          <a href="console.html">Configurator</a> drives this itself. Enter the FC UART number wired to the C3 and the
+          baud rate, then hit <strong>Connect via BF passthrough</strong>. 
+          Behind the scenes the page:</p>
         <ol>
           <li>Opens the FC's own USB serial port directly via Web Serial.</li>
           <li>Sends <code>#</code> to force a live MSP connection into CLI mode (harmless if it's already
@@ -136,12 +166,15 @@
           <li>Keeps using that <em>same</em> already-open connection as the FPVShutter JSON channel from
             that point on — no second app, no picking a different COM port, no reconnecting.</li>
         </ol>
-        <p>This is the same trick
-          <a href="https://github.com/ExpressLRS/ExpressLRS" target="_blank" rel="noopener">ExpressLRS's own flashing tool</a>
-          uses to reach a receiver wired to an FC UART (<code>BFinitPassthrough.py</code>): plain CLI
-          automation, not a special binary MSP command. A <code>{"path":"ping"}</code> reply with
-          <code>"via":"fc-uart"</code> confirms you're actually talking to the C3 through the bridge and
-          not a stale MSP session that never switched over.</p>
+        <p>This is similar to how
+          <a href="https://github.com/ExpressLRS/ExpressLRS-Configurator" target="_blank" rel="noopener">ExpressLRS Configurator</a>
+          connects to a receiver wired to an FC UART (<code>BFinitPassthrough.py</code>), with a slight caveat;
+          <br><br>
+          ELRS can "guess" what UART the receiver is on, as only one UART will have "SerialRx" enabled at a time.
+          <br><br>
+          However, FPVShutter is an ESP32-C3 connected over MSP and the Flight Controller can have multiple UARTs with MSP enabled (think 
+          VTX's that communicate over MSP, an inbuilt Bluetooth connection etc.), so we need to tell the Configurator which UART to use
+           otherwise it won't know which UART the C3 is connected to.
         <div class="notice">
           <svg><use href="#i-usb"/></svg>
           <p><strong><code>serialpassthrough</code> argument syntax varies by Betaflight version</strong>
@@ -163,9 +196,9 @@
           <strong>"Connect over USB"</strong> button and pick that same COM port.</p>
         <div class="notice err">
           <svg><use href="#i-usb"/></svg>
-          <p>While a passthrough session is open, the FC isn't running its own firmware, so the ESP32
-            loses live FC telemetry (arm state, RC-switch polling, OSD pushes) until you
-            <strong>power-cycle the FC</strong> — passthrough doesn't end on its own, and a normal
+          <p>While passthrough is open, the FC isn't running its own firmware, so the ESP32
+            loses live Flight Controller telemetry (arm state, RC-switch polling, OSD pushes) until you
+            <strong>power-cycle the Flight Controller</strong> — passthrough doesn't end on its own, and a normal
             reboot/reconnect isn't enough. <code>{"path":"msp",...}</code> on this channel always replies
             with an error, since there's no independent live FC left on the wire to bounce the MSP request
             off. Use the direct USB cable for MSP passthrough; use the FC-UART route for everything else.</p>
@@ -363,5 +396,6 @@
 </footer>
 
 <script src="assets/site.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flowbite@4.0.1/dist/flowbite.min.js"></script>
 </body>
 </html>

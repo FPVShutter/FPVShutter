@@ -1,5 +1,8 @@
 name: Create Pre-Release
-on: [push]
+on:
+  push:
+    branches:
+      - V2.2.1-CBSHFPV
 
 jobs:
   build:
@@ -44,8 +47,8 @@ jobs:
       - name: Release
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: v2.2-pre 
-          name: v2.2-CBSHFPV Prerelease
+          tag_name: v2.2.1-pre 
+          name: v2.2.1 Prerelease
           files: firmware.bin
           prerelease: true
           generate_release_notes: true
