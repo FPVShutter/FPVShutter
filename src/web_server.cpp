@@ -239,17 +239,12 @@ static void handleScanResults() {
     p += w; left -= w;
 
     // Field names match what the Web UI's renderDiscovered() reads:
-    // r.mac, r.n (name), r.t (type STRING), r.rssi.
-    //
-    // PROTOTYPE NOTE: kept as the old GoPro/"DJI" catch-all on purpose —
-    // NOT changed to distinguish "DJI Osmo Nano" vs "DJI Osmo Action" here.
-    // web_assets.h's renderDiscovered() hardcodes `r.t==='GoPro'?1:0` when
-    // building the Pair & Save button's data-pair-type, so ANY non-GoPro
-    // label — however this string reads — is saved as type 0 (Nano). If
-    // this were changed to emit "DJI Osmo Action" without also updating
-    // that JS, the button would show a correct-looking label while
-    // silently mis-pairing an Action camera as a Nano in the registry.
-    // Left generic and safe until web_assets.h gets a real 3-way picker.
+    // r.mac, r.n (name), r.t (display string), r.ty (numeric CameraType),
+    // r.rssi. The Pair & Save button MUST use r.ty — the old
+    // `r.t==='GoPro'?1:0` string match saved every DJI result as type 0
+    // (Nano), and since apiApplyCamera()'s online check also matches on
+    // type, pairing an Osmo Action from the Web UI failed outright with
+    // "device is offline".
     for (uint8_t i = 0; i < n && left > 96; i++) {
         if (i > 0) { *p++ = ','; left--; }
 
@@ -257,10 +252,11 @@ static void handleScanResults() {
         char sanitizedName[24] = "";
         sanitizeDeviceName(sanitizedName, sorted[i]->name, sizeof(sanitizedName));
 
-        const char *typeStr = (sorted[i]->type == CAMERA_GOPRO) ? "GoPro" : "DJI";
+        const char *typeStr = cameraTypeName((CameraType)sorted[i]->type);
         w = snprintf(p, left,
-                     "{\"mac\":\"%s\",\"n\":\"%s\",\"t\":\"%s\",\"rssi\":%d}",
-                     sorted[i]->mac, sanitizedName, typeStr, sorted[i]->rssi);
+                     "{\"mac\":\"%s\",\"n\":\"%s\",\"t\":\"%s\",\"ty\":%u,\"rssi\":%d}",
+                     sorted[i]->mac, sanitizedName, typeStr,
+                     (unsigned)sorted[i]->type, sorted[i]->rssi);
         p += w; left -= w;
     }
 
@@ -451,4 +447,4 @@ void webUpdate() {
 }
 
 const char* webApIp() { return _ipStr; }
-bool webIsUp()        { return _up; }
+bool webIsUp()        { return _up; }

@@ -92,16 +92,29 @@ size_t apiBuildStatusJson(char *buf, size_t bufLen) {
         uint8_t n = scanResultsGetSortedByRssi(sorted, MAX_SCAN_RESULTS);
         size_t o = 0;
         o += snprintf(pending + o, sizeof(pending) - o, "[");
-        for (uint8_t i = 0; i < n && o < sizeof(pending) - 80; i++) {
+        for (uint8_t i = 0; i < n; i++) {
             const char *typeStr = cameraTypeName((CameraType)sorted[i]->type);
             char safeName[sizeof(sorted[i]->name)];
             strlcpy(safeName, sorted[i]->name, sizeof(safeName));
             for (char *q = safeName; *q; q++) {
                 if (*q == '"' || *q == '\\') { memmove(q + 1, q, strlen(q)); *q = ' '; q++; }
             }
-            o += snprintf(pending + o, sizeof(pending) - o,
-                "%s{\"mac\":\"%s\",\"n\":\"%s\",\"t\":\"%s\",\"r\":%d}",
-                i ? "," : "", sorted[i]->mac, safeName, typeStr, sorted[i]->rssi);
+            // "ty" = numeric CameraType. Front-ends must use this (not the
+            // display string "t") as the Pair & Save type — a string match
+            // on "GoPro" can't tell a Nano from an Action.
+            char entry[128];
+            int el = snprintf(entry, sizeof(entry),
+                "%s{\"mac\":\"%s\",\"n\":\"%s\",\"t\":\"%s\",\"ty\":%u,\"r\":%d}",
+                i ? "," : "", sorted[i]->mac, safeName, typeStr,
+                (unsigned)sorted[i]->type, sorted[i]->rssi);
+            // Append whole entries only, always leaving room for the closing
+            // ']' — a truncated entry would make the entire status JSON
+            // unparseable in the browser.
+            if (el <= 0 || (size_t)el >= sizeof(entry) ||
+                o + (size_t)el + 2 > sizeof(pending)) break;
+            memcpy(pending + o, entry, (size_t)el);
+            o += (size_t)el;
+            pending[o] = '\0';
         }
         if (o < sizeof(pending) - 1) snprintf(pending + o, sizeof(pending) - o, "]");
     }
@@ -410,4 +423,4 @@ bool apiApplyCommand(const String &cmd, bool &shouldReboot,
     }
     if (errBuf) strlcpy(errBuf, "unknown command", errBufLen);
     return false;
-}
+}

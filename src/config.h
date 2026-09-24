@@ -14,7 +14,7 @@
 #include <Arduino.h>
 
 // Firmware version string (shown in UI and OTA status endpoint)
-#define FIRMWARE_VERSION "v2.2"
+#define FIRMWARE_VERSION "v2.2.2"
 
 // ──────────────────────────────────────────────────────────────────────────────
 // UART / MSP Configuration
@@ -63,7 +63,7 @@
 // ──────────────────────────────────────────────────────────────────────────────
 
 // Active camera backend: 0 = DJI Osmo Nano, 1 = GoPro HERO8 and newer,
-// 2 = DJI Osmo Action (assumed compatible, untested — see dji_action_camera.h).
+// 2 = DJI Osmo Action 2 (see dji_action_camera.h).
 #define DEFAULT_CAMERA_TYPE       CAMERA_DJI_NANO
 
 // Zero-based index of the RC channel used as the "Record" switch.
@@ -175,6 +175,30 @@
 // if no notification arrives within this window the link is considered
 // wedged and a reconnect is forced (milliseconds).
 #define DJI_LINK_STALE_MS         15000
+
+// How long an in-place DUML re-auth (see DjiDumlSession::softRecoverOnStale,
+// used by the Action 2 backend) may wait for the camera to answer before the
+// watchdog falls back to a full BLE disconnect/reconnect (milliseconds).
+#define DJI_SOFT_RECOVER_GRACE_MS 5000
+
+// DJI Osmo Action (dji_action_camera.cpp) — polled telemetry.
+// Unlike the Osmo Nano, the Action 2 is known (from two independent
+// open-source Action 2 projects, see dji_action_camera.cpp) to answer
+// explicit DUML queries for recording state (02/70) and battery (0D/02)
+// rather than relying on unsolicited pushes. The replies also keep the
+// DJI_LINK_STALE_MS watchdog fed.
+#define DJI_ACTION_STATUS_POLL_MS   500    // 02/70 record-state query
+#define DJI_ACTION_BATTERY_POLL_MS  5000   // 0D/02 battery query
+#define DJI_ACTION_REMAIN_POLL_MS   3000   // 02/71 SD card info query (remaining time, standby only)
+#define DJI_ACTION_HEARTBEAT_MS     1000   // 00/2B remote heartbeat (see dji_action_camera.cpp)
+
+// Bench aid for bringing up a new DJI model: log the first occurrence of
+// every distinct inbound DUML frame type (flags/set/id/sender) with a hex
+// dump, once per boot. Cheap (a small table + one DBG line per new type)
+// and invaluable when reading a first hardware session's serial log.
+// Off now that the Action 2 is verified; set to 1 when bringing up another
+// Action model (3/4/5/6) to see what it sends.
+#define DJI_ACTION_FRAME_DISCOVERY  0
 
 // BLE connection timeout (milliseconds).
 #define BLE_CONNECT_TIMEOUT_MS    10000

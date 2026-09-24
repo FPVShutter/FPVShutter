@@ -74,6 +74,21 @@ struct DjiDumlSession {
     uint32_t authStartMs          = 0;  // When pairing handshake began
     uint32_t lastRxMs             = 0;  // Last inbound DUML notification (ANY traffic)
 
+    // Per-model liveness policy. Defaults reproduce the original (Nano)
+    // behaviour exactly: hard reconnect once nothing has arrived for
+    // DJI_LINK_STALE_MS.
+    //
+    // softRecoverOnStale (Action 2): a camera that only ANSWERS queries can
+    // go quiet because its DUML session lapsed while the BLE link itself is
+    // still fine. Instead of tearing the link down straight away, the
+    // watchdog first re-sends the pairing PIN in place (the camera answers
+    // "already paired" within ~100 ms and the session resumes), and only
+    // does the full disconnect/reconnect if that ALSO gets no reply within
+    // DJI_SOFT_RECOVER_GRACE_MS.
+    bool     softRecoverOnStale   = false;
+    uint32_t softRecoverAtMs      = 0;  // 0 = no in-place recovery in progress
+    uint32_t softRecoverCount     = 0;  // diagnostics: recoveries this session
+
     // User-facing error from the last connect attempt. Empty = no error.
     char lastError[48] = "";
 
@@ -173,4 +188,4 @@ void dumlUpdate(DjiDumlSession &s, CameraTelemetry &telemetry, CameraType camTyp
 /// saved-camera kick). `logPrefix` is just the DBG() tag ("ACTION"/"NANO").
 void dumlTargetMac(DjiDumlSession &s, const char *mac, const char *logPrefix);
 
-#endif // DJI_DUML_TRANSPORT_H
+#endif // DJI_DUML_TRANSPORT_H

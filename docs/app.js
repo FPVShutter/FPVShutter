@@ -99,6 +99,7 @@ let pendingTimer = null;
 
 let statusPollTimer = null;
 let formsPopulated = false;
+let lastStatus = null; // most recent status reply (renderStatus)
 
 // Which function gets each decoded line from the port. Normally this is
 // handleLine() (the JSON protocol dispatcher), but the FC-passthrough
@@ -480,6 +481,7 @@ async function pollStatus() {
 }
 
 function renderStatus(st) {
+  lastStatus = st;
   $("stCamState").textContent = st.cam?.stateName ?? "—";
   $("stCamName").textContent = st.cam?.name || "(none)";
   $("stCamBatt").textContent = st.cam?.batt >= 0 ? `${st.cam.batt}%` : "—";
@@ -513,7 +515,7 @@ function renderCameraLists(st) {
     cams.forEach((c, i) => {
       const li = document.createElement("li");
       if (c.a) li.classList.add("active");
-      const typeName = c.t === 1 ? "GoPro" : "DJI";
+      const typeName = camTypeName(c.t);
       li.innerHTML = `
         <span>
           <span class="cam-name">${escapeHtml(c.n)}</span>
@@ -542,11 +544,20 @@ function renderCameraLists(st) {
           <span class="cam-meta"> · ${p.t} · ${p.mac} · ${p.r} dBm</span>
         </span>
         <span class="cam-actions">
-          <button class="btn small" data-action="pair" data-mac="${p.mac}" data-type="${p.t === "GoPro" ? 1 : 0}">Pair &amp; Save</button>
+          <button class="btn small" data-action="pair" data-mac="${p.mac}" data-type="${scanResultType(p)}">Pair &amp; Save</button>
         </span>`;
       pendingEl.appendChild(li);
     });
   }
+}
+
+// CameraType: 0 = DJI Osmo Nano, 1 = GoPro, 2 = DJI Osmo Action.
+const CAM_TYPE_NAMES = { 0: "DJI Osmo Nano", 1: "GoPro", 2: "DJI Osmo Action" };
+function camTypeName(t) { return CAM_TYPE_NAMES[t] || "DJI"; }
+// Numeric type of a scan result. Newer firmware sends "ty"; older firmware
+// only the display string "t", where anything but "GoPro" meant DJI (Nano).
+function scanResultType(p) {
+  return typeof p.ty === "number" ? p.ty : (p.t === "GoPro" ? 1 : 0);
 }
 
 function escapeHtml(s) {
@@ -588,6 +599,8 @@ function populateForms(st) {
   $("apPass").value = "";
   $("wifiSwitch").value = st.wifiSwitch ?? -1;
   $("scanAll").checked = !!st.scanAll;
+  $("wifiApEnabled").checked = st.wifiApEnabled !== false;
+  $("blePower").value = String(st.blePower ?? 2);
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -726,6 +739,20 @@ async function runAction(btn, fn) {
   }
 }
 
+// Like runAction(), but for inputs that act on change (checkbox/select):
+// only toggles disabled. runAction() restores btn.textContent, which on a
+// <select> would wipe out its <option>s.
+async function runControlAction(ctrl, fn) {
+  ctrl.disabled = true;
+  try {
+    await fn();
+  } catch (err) {
+    logLine(`[console] action failed: ${err.message}`, "err");
+  } finally {
+    ctrl.disabled = false;
+  }
+}
+
 function wireStaticActions() {
   $("btnConnect").addEventListener("click", connect);
   $("btnConnectPassthrough").addEventListener("click", (e) => runAction(e.target, connectViaFcPassthrough));
@@ -740,16 +767,41 @@ function wireStaticActions() {
     runAction(e.target, () => sendCommand({ path: "command", cmd: "reboot" }));
   });
 
-  $("btnApplyCamType").addEventListener("click", (e) =>
+  // Scan follows the Web UI flow: the chosen model decides which backend
+  // runs the scan (and therefore which type results are paired as), so
+  // switch the backend first if it differs -- no separate "apply" step.
+  $("btnScan").addEventListener("click", (e) =>
     runAction(e.target, async () => {
-      const r = await sendCommand({ path: "settings", camera: Number($("camType").value) });
+      const want = Number($("camType").value);
+      if (lastStatus?.cam?.type !== want) {
+        const s = await sendCommand({ path: "settings", camera: want });
+        if (!s.ok) throw new Error(s.error || "failed to switch camera model");
+        logLine(`[console] camera model -> ${camTypeName(want)}`);
+      }
+      const r = await sendCommand({ path: "camera", scan: true });
       if (!r.ok) throw new Error(r.error || "failed");
     }));
 
-  $("btnScan").addEventListener("click", (e) =>
-    runAction(e.target, async () => {
-      const r = await sendCommand({ path: "camera", scan: true });
+  // Radio settings apply as soon as they change, same as the Web UI.
+  $("wifiApEnabled").addEventListener("change", (e) => {
+    const want = e.target.checked;
+    runControlAction(e.target, async () => {
+      try {
+        const r = await sendCommand({ path: "settings", wifiApEnabled: want });
+        if (!r.ok) throw new Error(r.error || "failed");
+        logLine(`[console] Wi-Fi access point ${want ? "enabled" : "turned off"}`);
+      } catch (err) {
+        e.target.checked = !want;
+        throw err;
+      }
+    });
+  });
+
+  $("blePower").addEventListener("change", (e) =>
+    runControlAction(e.target, async () => {
+      const r = await sendCommand({ path: "settings", blePower: Number(e.target.value) });
       if (!r.ok) throw new Error(r.error || "failed");
+      logLine(`[console] Bluetooth power -> ${e.target.selectedOptions[0].textContent}`);
     }));
 
   $("savedCamList").addEventListener("click", (e) => {
@@ -807,14 +859,23 @@ function wireStaticActions() {
 
   $("btnSaveWifi").addEventListener("click", (e) =>
     runAction(e.target, async () => {
-      const body = { path: "settings", wifiSwitch: Number($("wifiSwitch").value), scanAll: $("scanAll").checked };
+      const body = {
+        path: "settings",
+        wifiSwitch: Number($("wifiSwitch").value),
+        scanAll: $("scanAll").checked,
+      };
+      // Credentials only travel when an SSID was typed. Previously a blank
+      // password field was always sent as pass:"" -- so saving ANY setting on
+      // this card silently turned the AP into an open network.
       const ssid = $("apSsid").value.trim();
-      const pass = $("apPass").value;
-      if (ssid) body.ssid = ssid;
-      if (pass || $("apPass").value === "") body.pass = pass;
+      if (ssid) {
+        body.ssid = ssid;
+        body.pass = $("apPass").value;
+      }
       const r = await sendCommand(body);
       if (!r.ok) throw new Error(r.error || "failed");
-      if (r.apRestart) logLine("[console] Wi-Fi AP restarting with new credentials");
+      if (r.apRestart) logLine("[console] Wi-Fi AP (re)starting");
+      if (r.apStop) logLine("[console] Wi-Fi AP turned off (master switch)");
     }));
 
   $("btnMsp").addEventListener("click", (e) =>

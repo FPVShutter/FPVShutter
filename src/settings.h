@@ -20,9 +20,9 @@
 // ──────────────────────────────────────────────────────────────────────────────
 // Camera brands
 // ──────────────────────────────────────────────────────────────────────────────
-// PROTOTYPE: split the old single CAMERA_DJI value into CAMERA_DJI_NANO
-// (hardware-verified) and CAMERA_DJI_ACTION (assumed compatible, untested —
-// see dji_action_camera.h). Existing numeric values are preserved for NVS
+// Split the old single CAMERA_DJI value into CAMERA_DJI_NANO and
+// CAMERA_DJI_ACTION (Action 2), both hardware-verified — see
+// dji_nano_camera.h / dji_action_camera.h. Existing numeric values are preserved for NVS
 // backward compatibility: anything already saved as camera=0 keeps meaning
 // exactly what it meant before (this project's actual paired camera, the
 // Nano) and camera=1 is untouched. CAMERA_DJI_ACTION is a new value (2), so
@@ -30,7 +30,7 @@
 enum CameraType : uint8_t {
     CAMERA_DJI_NANO   = 0,   // DJI Osmo Nano (DUML over BLE) — hardware-verified
     CAMERA_GOPRO      = 1,   // GoPro HERO8+ (Open GoPro BLE API)
-    CAMERA_DJI_ACTION = 2,   // DJI Osmo Action family (DUML over BLE) — assumed compatible, untested
+    CAMERA_DJI_ACTION = 2,   // DJI Osmo Action 2 (DUML over BLE, polled telemetry) — hardware-verified
 };
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -128,4 +128,4 @@ const char* cameraTypeName(CameraType type);
 /// Human-readable name of a BLE TX power level ("Low" / "Medium" / "High").
 const char* blePowerName(BlePowerLevel level);
 
-#endif // SETTINGS_H
+#endif // SETTINGS_H
