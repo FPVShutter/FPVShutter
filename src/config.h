@@ -68,7 +68,7 @@
 
 // Zero-based index of the RC channel used as the "Record" switch.
 // In Betaflight, AUX1 = channel 5 (index 4), AUX4 = channel 8 (index 7), etc.
-#define DEFAULT_AUX_CHANNEL_INDEX 11    // AUX5 — change to match your setup
+#define DEFAULT_AUX_CHANNEL_INDEX 4     // AUX1 (CH5) — change to match your setup
 
 // Threshold (µs) above which the switch is considered ON (record).
 #define DEFAULT_RC_THRESHOLD_US   1800

@@ -587,7 +587,7 @@ console). Compile-time defaults are in `src/config.h`:
 | `DEFAULT_AUX_CHANNEL_INDEX` | 4 | RC channel used as record switch |
 | `DEFAULT_RC_THRESHOLD_US` | 1800 | us above = ON |
 | `DEFAULT_RC_DEBOUNCE_MS` | 300 | Switch debounce |
-| `DEFAULT_RECORD_ON_ARM` | false | Auto-record on arming |
+| `DEFAULT_RECORD_ON_ARM` | true | Auto-record on arming |
 | `DEFAULT_STOP_ON_DISARM` | true | Stop when FC disarms |
 |`DEFAULT_STOP_ON_DISARM_DELAY_MS`| 0 | Configurable Delay (in ms) when disarmed, allowing for a grace period when turtling out of a crash |
 | `DEFAULT_SCAN_ALL` | false | Show all BLE advertisers during discovery |
@@ -595,7 +595,7 @@ console). Compile-time defaults are in `src/config.h`:
 | `DEFAULT_WIFI_AP_ENABLED` | true | Master Wi-Fi AP switch (false = AP never starts) |
 | `DEFAULT_BLE_POWER` | High | Bluetooth TX power (Low / Medium / High) |
 | `DJI_ACTION_STATUS_POLL_MS` / `DJI_ACTION_BATTERY_POLL_MS` / `DJI_ACTION_REMAIN_POLL_MS` | 500 / 5000 / 3000 | Action 2 telemetry query intervals |
-| `DJI_ACTION_FRAME_DISCOVERY` | 1 | Log each new DUML message type from an Action camera once (bench aid) |
+| `DJI_ACTION_FRAME_DISCOVERY` | 0 | Log each new DUML message type from an Action camera once (bench aid) |
 | `WIFI_AP_DEFAULT_SSID` / `_PASS` | FPVShutter / fpvshutter | Web UI hotspot |
 | `DEFAULT_OSD_SLOT_1..4` | status/time/batt/link | Custom Message contents |
 | `STATUS_LED_PIN` | 8 | Onboard LED |
@@ -716,4 +716,4 @@ stock OSD font (`resources/osd/2/betaflight.mcm`) and remains **GPL-3.0**,
 per the upstream project's license -- see Credits & References above. It's
 a static image asset used only to render the configurator's OSD live
 preview; it isn't linked into the firmware or required to build/run
-anything else in this repo.
+anything else in this repo.
