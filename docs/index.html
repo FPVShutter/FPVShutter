@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FPVShutter — Open-source CamLink alternative for Betaflight</title>
-<meta name="description" content="FPVShutter is an open-source ESP32-C3 BLE bridge that turns an RC switch into record control for DJI Osmo Action and GoPro cameras, with live telemetry pushed into the Betaflight OSD.">
+<meta name="description" content="FPVShutter is an open-source ESP32-C3 BLE bridge that turns an RC switch into record control for DJI Osmo Nano, DJI Osmo Action 2 and GoPro cameras, with live telemetry pushed into the Betaflight OSD.">
 <script>(function(){try{var t=localStorage.getItem('fpvshutter.theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 <link rel="stylesheet" href="assets/site.css">
 </head>
@@ -55,7 +55,7 @@
     <h2>Record control &amp; OSD telemetry for your FPV camera</h2>
     <span class="eyebrow">Open source · MIT licensed</span>
     <p class="sub">FPVShutter is a free, open-source alternative to the itsFPV CamLink. An ESP32-C3
-      bridges your radio switch (or arming state) straight to a DJI Osmo Action or GoPro camera over
+      bridges your radio switch (or arming state) straight to a DJI Osmo Nano, DJI Osmo Action 2 or GoPro camera over
       Bluetooth, and pushes live camera telemetry into the Betaflight OSD.</p>
     <p class="sub" style="font-size:13.5px;margin-top:-14px">FPVShutter is based on <a href="https://github.com/rover1312/shutterlink" target="_blank" rel="noopener">rover1312/shutterlink</a>, with additional changes and camera-backend work.</p>
     <div class="hero-ctas">
@@ -104,9 +104,10 @@
       </div>
       <div class="glass feature">
         <svg class="ic"><use href="#i-cam"/></svg>
-        <h3>Two camera backends</h3>
-        <p>DJI Osmo Action (DUML over BLE) and GoPro HERO8 through HERO13 (official Open GoPro BLE API),
-          switchable at runtime.</p>
+        <h3>Three camera backends</h3>
+        <p>DJI Osmo Nano and DJI Osmo Action 2 (DUML over BLE, on a shared transport) and GoPro HERO8
+          through HERO13 (official Open GoPro BLE API), switchable at runtime. Nano and Action 2 are both
+          tested on hardware.</p>
       </div>
       <div class="glass feature">
         <svg class="ic"><use href="#i-bt"/></svg>
@@ -117,15 +118,17 @@
       </div>
       <div class="glass feature">
         <svg class="ic"><use href="#i-wifi"/></svg>
-        <h3>Wi-Fi power switch</h3>
-        <p>Assign a spare AUX channel to kill the Web UI hotspot in flight — saves ~60–100&nbsp;mA while
-          the BLE camera link keeps running.</p>
+        <h3>RF-friendly radio options</h3>
+        <p>Kill the Web UI hotspot in flight from a spare AUX channel (saves ~60–100&nbsp;mA), keep Wi-Fi
+          off entirely with the master switch, and set Bluetooth power to Low / Medium / High for builds
+          where the board sits next to an ELRS receiver.</p>
       </div>
       <div class="glass feature">
         <svg class="ic"><use href="#i-usb"/></svg>
         <h3>Web Serial Configurator</h3>
-        <p>A GitHub Pages-hosted page that talks straight to the board over USB — no Wi-Fi needed —
-          for bench setup, unrestricted MSP passthrough and a raw serial log.</p>
+        <p>A GitHub Pages-hosted page that talks to the board over USB or through Betaflight
+          passthrough — no Wi-Fi needed — for bench setup, firmware updates without unplugging the C3,
+          an OSD live preview, unrestricted MSP passthrough and a raw serial log.</p>
       </div>
       <div class="glass feature">
         <svg class="ic"><use href="#i-aperture"/></svg>
@@ -170,7 +173,8 @@
         <svg class="ic"><use href="#i-usb"/></svg>
         <h3>Configurator</h3>
         <p>The same configuration surface is reachable over USB from this site — useful on the bench, or
-          through a Betaflight serial passthrough once it's installed in the quad.</p>
+          through a Betaflight serial passthrough once it's installed in the quad, including firmware
+          updates.</p>
       </div>
     </div>
   </section>
@@ -182,7 +186,7 @@
         <tr><th>Item</th><th>Notes</th></tr>
         <tr><td><strong>ESP32-C3</strong> board</td><td>DevKitM-1 / "Super Mini" class. BLE 5.0, NimBLE stack.</td></tr>
         <tr><td><strong>Flight controller</strong></td><td>Betaflight with Custom Message OSD elements + one free UART.</td></tr>
-        <tr><td><strong>Camera</strong></td><td>DJI Osmo Action family <strong>or</strong> GoPro HERO8/9/10/11/12/13.</td></tr>
+        <tr><td><strong>Camera</strong></td><td>DJI Osmo Nano, DJI Osmo Action 2 <strong>or</strong> GoPro HERO8/9/10/11/12/13. Other Osmo Action models are untested.</td></tr>
         <tr><td>Wiring</td><td>4 wires: 5&nbsp;V, GND, FC TX, FC RX.</td></tr>
       </table>
     </div>

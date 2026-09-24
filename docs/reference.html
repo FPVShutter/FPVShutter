@@ -101,13 +101,43 @@
             <tr><td><code>{"path":"camera", ...}</code></td><td>Same fields as <code>POST /api/camera</code></td></tr>
             <tr><td><code>{"path":"command","cmd":"start"|"stop"|"reboot"}</code></td><td>Same as <code>POST /api/command</code></td></tr>
             <tr><td><code>{"path":"msp","cmd":&lt;u8&gt;}</code></td><td>MSP passthrough — <strong>unrestricted</strong> here (unlike <code>/api/msp</code>'s read-only allowlist), since this channel requires a physical USB cable, a much higher trust bar than the Wi-Fi AP. Only works over the direct USB port.</td></tr>
+            <tr><td><code>{"path":"ota","action":"begin"}</code></td><td>Start a firmware update. An optional <code>"size"</code> is accepted, but the Configurator leaves it out on purpose — see <a href="#serial-ota">below</a>.</td></tr>
+            <tr><td><code>{"path":"ota","action":"chunk","data":"&lt;base64&gt;"}</code></td><td>Write one chunk (≤ <code>OTA_CHUNK_MAX_BYTES</code> raw bytes, 256 by default, base64-encoded)</td></tr>
+            <tr><td><code>{"path":"ota","action":"end"}</code></td><td>Verify and reboot into the new firmware</td></tr>
+            <tr><td><code>{"path":"ota","action":"abort"}</code></td><td>Cancel an in-progress update, leaving the running firmware untouched</td></tr>
           </table>
         </div>
         <p>Only one request is in flight at a time — send a command and wait for the next
-          <code>{</code>-prefixed reply line before sending another. <code>/api/scan</code> and OTA
-          firmware flashing are intentionally out of scope for this transport (scan results are already
-          embedded in the status response; OTA-over-Web-Serial would need a chunked-upload + bootloader
-          handshake, its own feature).</p>
+          <code>{</code>-prefixed reply line before sending another. <code>/api/scan</code> is
+          intentionally out of scope for this transport (scan results are already embedded in the status
+          response).</p>
+
+        <h3 id="serial-ota">Flashing firmware over Web Serial</h3>
+        <p>The Configurator's <strong>Firmware update</strong> card flashes a new <code>firmware.bin</code>
+          over whichever serial connection is already open — the direct USB cable, <em>or</em> a live
+          Betaflight passthrough session. The second one means you can update the C3 through the FC's own
+          USB port without unplugging it or taking it off the frame, the same idea ExpressLRS uses to
+          reflash a receiver wired to an FC UART.</p>
+        <p>It's an application-level update using the same
+          <a href="https://docs.espressif.com/projects/arduino-esp32/en/latest/api/update.html" target="_blank" rel="noopener"><code>Update.h</code></a>
+          mechanism as the Wi-Fi Web UI's OTA upload, writing into the board's spare OTA partition
+          (<code>min_spiffs.csv</code> gives it two). The page drives <code>begin</code> →
+          <code>chunk</code> (repeated) → <code>end</code> through the same one-request-at-a-time queue as
+          every other command. The board only switches to the new image once the write verifies clean,
+          so a failed transfer or a cancel just leaves the running firmware in place. The page doesn't
+          send <code>"size"</code> on <code>begin</code>: with a size, the firmware erases the whole
+          region in one long blocking call, which was long enough to time out a passthrough session.
+          Without it, flash is erased chunk by chunk.</p>
+        <p>After a successful flash, over the direct USB cable the board re-enumerates, so reconnect once
+          it reappears. Over FC passthrough only the C3 reboots — the FC's USB link stays up — so the page
+          starts getting replies again on its own.</p>
+        <div class="notice">
+          <svg><use href="#i-usb"/></svg>
+          <p>This is the C3's <em>own</em> update mechanism, so it has to already be running an
+            FPVShutter build that includes the <code>ota</code> command. Flash the first one over USB with
+            PlatformIO (<a href="setup.html#step-3">setup step 3</a>); every build after that can go over
+            the air.</p>
+        </div>
       </section>
 
       <section class="section" id="betaflight-passthrough">
@@ -161,6 +191,10 @@
           firmware wants, then <code>serialpassthrough &lt;target&gt; &lt;baud&gt;</code> per the table
           above, close the Configurator so the OS COM port is free, then use the console's plain
           <strong>"Connect over USB"</strong> button and pick that same COM port.</p>
+        <p>While a bench session is active on the FC UART (and for the whole of an OTA flash), the
+          firmware pauses its own MSP polling, OSD pushes and automatic camera reconnect attempts, so
+          nothing else writes to that UART and corrupts the JSON replies. The bench view's FC fields
+          freeze while this is happening; that's expected.</p>
         <div class="notice err">
           <svg><use href="#i-usb"/></svg>
           <p>While a passthrough session is open, the FC isn't running its own firmware, so the ESP32
@@ -168,20 +202,53 @@
             <strong>power-cycle the FC</strong> — passthrough doesn't end on its own, and a normal
             reboot/reconnect isn't enough. <code>{"path":"msp",...}</code> on this channel always replies
             with an error, since there's no independent live FC left on the wire to bounce the MSP request
-            off. Use the direct USB cable for MSP passthrough; use the FC-UART route for everything else.</p>
+            off. Use the direct USB cable for MSP passthrough; use the FC-UART route for everything else,
+            including firmware updates.</p>
         </div>
       </section>
 
       <section class="section" id="camera-protocols">
         <h2>Camera support notes</h2>
-        <h3>DJI Osmo Action (DUML over BLE)</h3>
+        <div class="table-wrap">
+          <table>
+            <tr><th>Camera</th><th>Backend</th><th>Record control</th><th>Telemetry</th><th>Status</th></tr>
+            <tr><td>DJI Osmo Nano</td><td><code>dji_nano_camera</code></td><td>yes</td><td>battery %, rec state, elapsed / remaining time (camera pushes it)</td><td><strong>Tested on hardware</strong></td></tr>
+            <tr><td>DJI Osmo Action 2</td><td><code>dji_action_camera</code></td><td>yes</td><td>battery %, rec state, elapsed / remaining time (polled from the camera)</td><td><strong>Tested on hardware</strong></td></tr>
+            <tr><td>DJI Osmo Action 3 / 4 / 5 Pro / 6</td><td><code>dji_action_camera</code></td><td>possibly</td><td>unknown</td><td>Not tested</td></tr>
+            <tr><td>GoPro HERO8–13</td><td><code>gopro_camera</code></td><td>yes</td><td>battery %, encoding state</td><td>Upstream</td></tr>
+          </table>
+        </div>
+        <h3>DJI Osmo Nano / Osmo Action 2 (DUML over BLE)</h3>
         <p>Service <code>0xFFF0</code>; DUML frames written without response to <code>0xFFF5</code>,
           notifications on <code>0xFFF4</code>. App-level pairing (<code>0x07/0x45</code>), not OS
-          bonding — approve prompts on the camera screen when they appear.</p>
+          bonding — approve prompts on the camera screen when they appear. Framing, connection, pairing
+          and reconnect are shared by both DJI backends in <code>dji_duml_transport.cpp</code>.</p>
 <pre><code>[0x55][len_lo][(ver&lt;&lt;2|len_hi)][crc8][sender][receiver]
 [msg_id BE][flags][cmdSet][cmdId][payload...][crc16 LE]</code></pre>
-        <p>Record = cmdSet <code>0x0A</code>, cmdId <code>0x0D</code>, payload <code>0x01</code> start /
-          <code>0x00</code> stop.</p>
+        <p>Record = cmdSet <code>0x02</code>, cmdId <code>0x02</code>, app <code>0x02</code> → camera
+          <code>0x01</code>, payload <code>0x01</code> start / <code>0x00</code> stop (same on both
+          models).</p>
+        <p>Telemetry is where the two differ: the Nano pushes everything by itself, while the Action 2 only
+          answers queries.</p>
+        <div class="table-wrap">
+          <table>
+            <tr><th></th><th>Osmo Nano (pushed)</th><th>Osmo Action 2 (polled)</th></tr>
+            <tr><td>Recording state</td><td><code>02/80</code> push, <code>pData[11]</code> bit <code>0x80</code></td><td><code>02/70</code> query every 500&nbsp;ms, reply <code>pData[12]</code>: <code>01</code> idle, <code>41</code> starting, <code>81</code> recording, <code>C1</code> saving</td></tr>
+            <tr><td>Battery %</td><td><code>0D/02</code> push, <code>pData[31]</code></td><td><code>0D/02</code> query to <code>0x05</code> every 5&nbsp;s, reply <code>pData[32]</code></td></tr>
+            <tr><td>Remaining time (standby)</td><td><code>02/80</code> push, <code>pData[28:29]</code></td><td><code>02/71</code> SD-card-info query every 3&nbsp;s, reply <code>pData[25:28]</code> (seconds)</td></tr>
+            <tr><td>Elapsed time (recording)</td><td>counted locally</td><td>counted locally</td></tr>
+          </table>
+        </div>
+        <p>Keeping the link alive also differs. The Nano's constant pushes prove it's connected. The
+          Action 2 backend sends DJI's remote heartbeat (<code>00/2B</code> <code>{01 01}</code> to
+          <code>0xF0</code>, plus an empty <code>00/00</code> to <code>0x28</code>) every second. If the
+          camera goes quiet for 15&nbsp;s while Bluetooth is still up, it first re-sends the pairing
+          request in place (the camera answers "already paired"), and only falls back to a full reconnect
+          if that gets no reply within 5&nbsp;s.</p>
+        <p>Bringing up another Action model? Set <code>DJI_ACTION_FRAME_DISCOVERY</code> to 1 in
+          <code>config.h</code> and the firmware logs the first frame of every new kind of camera message
+          as a hex dump on the USB serial monitor. One test session's log is usually enough to see what
+          that camera sends.</p>
         <h3>GoPro HERO8+ (Open GoPro BLE)</h3>
         <p>Official public API: service <code>0xFEA6</code>, command characteristic
           <code>b5f90072-aa8d-11e3-9046-0002a5d5c51b</code>.</p>
@@ -202,11 +269,11 @@
           <table>
             <tr><th>Endpoint</th><th>Purpose</th></tr>
             <tr><td><code>GET /api/status</code></td><td>Live telemetry snapshot (JSON)</td></tr>
-            <tr><td><code>POST /api/settings</code></td><td>Update + persist settings</td></tr>
-            <tr><td><code>POST /api/camera</code></td><td><code>{"scan":true}</code> | <code>{"pair":"MAC","type":0|1}</code> | <code>{"select":i}</code> | <code>{"remove":i}</code></td></tr>
+            <tr><td><code>POST /api/settings</code></td><td>Update + persist settings. Keys: <code>camera</code> (0 Nano, 1 GoPro, 2 Action 2), <code>auxChannel</code>, <code>threshold</code>, <code>debounce</code>, <code>recordOnArm</code>, <code>stopOnDisarm</code>, <code>stopOnDisarmDelay</code>, <code>scanAll</code>, <code>wifiSwitch</code>, <code>wifiApEnabled</code>, <code>blePower</code> (0–2), <code>slot0</code>–<code>slot3</code>, <code>ssid</code>, <code>pass</code></td></tr>
+            <tr><td><code>POST /api/camera</code></td><td><code>{"scan":true}</code> | <code>{"pair":{"mac":"MAC","type":0|1|2}}</code> | <code>{"select":i}</code> | <code>{"remove":i}</code></td></tr>
             <tr><td><code>POST /api/command</code></td><td><code>{"cmd":"start"|"stop"|"reboot"}</code></td></tr>
             <tr><td><code>POST /api/msp</code></td><td>Read-only allowlisted MSP passthrough</td></tr>
-            <tr><td><code>GET /api/scan</code></td><td>Current scan results</td></tr>
+            <tr><td><code>GET /api/scan</code></td><td>Current scan results (<code>ty</code> = numeric camera type to pair with)</td></tr>
             <tr><td><code>POST /api/ota</code> / <code>GET /api/ota/status</code></td><td>OTA firmware update</td></tr>
           </table>
         </div>
@@ -222,15 +289,21 @@
           <table>
             <tr><th>Define</th><th>Default</th><th>Purpose</th></tr>
             <tr><td><code>FC_UART_RX_PIN</code> / <code>FC_UART_TX_PIN</code></td><td>5 / 4</td><td>UART pins to the FC</td></tr>
-            <tr><td><code>DEFAULT_CAMERA_TYPE</code></td><td>CAMERA_DJI</td><td>Initial camera backend</td></tr>
-            <tr><td><code>DEFAULT_AUX_CHANNEL_INDEX</code></td><td>4</td><td>RC channel used as record switch</td></tr>
+            <tr><td><code>DEFAULT_CAMERA_TYPE</code></td><td>CAMERA_DJI_NANO</td><td>Initial camera backend (0 Nano, 1 GoPro, 2 Action 2)</td></tr>
+            <tr><td><code>DEFAULT_AUX_CHANNEL_INDEX</code></td><td>11</td><td>Zero-based RC channel index used as record switch (4 = AUX1 / CH5)</td></tr>
             <tr><td><code>DEFAULT_RC_THRESHOLD_US</code></td><td>1800</td><td>µs above = ON</td></tr>
             <tr><td><code>DEFAULT_RC_DEBOUNCE_MS</code></td><td>300</td><td>Switch debounce</td></tr>
-            <tr><td><code>DEFAULT_RECORD_ON_ARM</code></td><td>false</td><td>Auto-record on arming</td></tr>
+            <tr><td><code>DEFAULT_RECORD_ON_ARM</code></td><td>true</td><td>Auto-record on arming</td></tr>
             <tr><td><code>DEFAULT_STOP_ON_DISARM</code></td><td>true</td><td>Stop when FC disarms</td></tr>
             <tr><td><code>DEFAULT_STOP_ON_DISARM_DELAY_MS</code></td><td>0</td><td>Configurable Delay (in ms) when disarmed, allowing for a grace period when turtling out of a crash</td></tr>
             <tr><td><code>DEFAULT_SCAN_ALL</code></td><td>false</td><td>Show all BLE advertisers during discovery</td></tr>
             <tr><td><code>DEFAULT_WIFI_SWITCH_CH</code></td><td>255 (off)</td><td>AUX channel toggling the Wi-Fi AP</td></tr>
+            <tr><td><code>DEFAULT_WIFI_AP_ENABLED</code></td><td>true</td><td>Master Wi-Fi AP switch (false = AP never starts)</td></tr>
+            <tr><td><code>DEFAULT_BLE_POWER</code></td><td>BLE_POWER_HIGH</td><td>Bluetooth TX power (Low / Medium / High)</td></tr>
+            <tr><td><code>DJI_ACTION_STATUS_POLL_MS</code> / <code>_BATTERY_POLL_MS</code> / <code>_REMAIN_POLL_MS</code></td><td>500 / 5000 / 3000</td><td>Action 2 telemetry query intervals</td></tr>
+            <tr><td><code>DJI_ACTION_FRAME_DISCOVERY</code></td><td>0</td><td>Set to 1 to log each new DUML message type from an Action camera once (bench aid)</td></tr>
+            <tr><td><code>FC_UART_BENCH_IDLE_MS</code></td><td>8000</td><td>How long MSP polling / OSD pushes stay paused after the last bench command over the FC UART</td></tr>
+            <tr><td><code>OTA_CHUNK_MAX_BYTES</code></td><td>256</td><td>Raw bytes per Web Serial OTA chunk (keep in sync with <code>docs/app.js</code>)</td></tr>
             <tr><td><code>WIFI_AP_DEFAULT_SSID</code> / <code>_PASS</code></td><td>FPVShutter / fpvshutter</td><td>Web UI hotspot</td></tr>
             <tr><td><code>DEFAULT_OSD_SLOT_1..4</code></td><td>status/time/batt/link</td><td>Custom Message contents</td></tr>
             <tr><td><code>STATUS_LED_PIN</code></td><td>8</td><td>Onboard LED</td></tr>
@@ -250,8 +323,9 @@
 │   ├── webui.html           #   Field Web UI Guide
 │   ├── console.html         #   Web Serial Configurator (the tool)
 │   ├── reference.html       #   This page
-│   ├── style.css / app.js   #   Bench-console styling + Web Serial logic
-│   └── assets/               #   Shared site chrome (site.css / site.js)
+│   ├── style.css / app.js   #   Configurator styling + Web Serial logic
+│   └── assets/              #   Shared site chrome (site.css / site.js) +
+│                            #   osd-font.png (GPL-3.0, OSD live preview)
 ├── .vscode/                 # IntelliSense / debug configs (PlatformIO)
 └── src/
     ├── config.h             # Pins, defaults, timings, debug switch
@@ -261,8 +335,10 @@
     ├── msp_protocol.h/.cpp  # MSP v1 parser + MSP v2 SET_TEXT (CRC-DVB-S2)
     ├── fc_status.h/.cpp     # Arm detection, FC battery/identity polling
     ├── camera_common.h      # Shared camera types (backend interface)
-    ├── dji_camera.h/.cpp    # DJI Osmo DUML-over-BLE backend + discovery
-    │                        #   filters (name/OUI/service/mfr-data)
+    ├── dji_duml_transport.h/.cpp # Shared DJI DUML-over-BLE framing, GATT
+    │                        #   connect, pairing, keep-alive, reconnect
+    ├── dji_nano_camera.h/.cpp   # Osmo Nano backend (pushed telemetry)
+    ├── dji_action_camera.h/.cpp # Osmo Action 2 backend (polled telemetry)
     ├── gopro_camera.h/.cpp  # GoPro Open BLE backend
     ├── camera_manager.h/.cpp   # Backend dispatcher (runtime switching,
     │                           # user-initiated scans, reconnect kicks)
@@ -279,7 +355,8 @@
     ├── api_core.h/.cpp      # Transport-agnostic status/settings/camera/
     │                        #   command logic shared by web_server + serial_config
     ├── web_server.h/.cpp    # SoftAP, captive DNS, REST API, OTA endpoint
-    ├── serial_config.h/.cpp # Web Serial bench-config protocol (USB)
+    ├── serial_config.h/.cpp # Web Serial config protocol + serial OTA
+    │                        #   (USB and FC UART / BF passthrough)
     └── web_assets.h         # Embedded Glassmorphism Web UI (PROGMEM)</code></pre>
       </section>
 
@@ -290,7 +367,11 @@
             usage is no problem.</li>
           <li>GoPro telemetry depth depends on model firmware (battery %, encoding state; record timer is
             counted locally while encoding).</li>
-          <li>DJI telemetry parsing beyond link state is still experimental upstream.</li>
+          <li>DJI telemetry is tested on the Osmo Nano and Osmo Action 2. Other Action models
+            (3 / 4 / 5 Pro / 6) are untested.</li>
+          <li>While a saved camera is switched off, each reconnect attempt can block the main loop for up
+            to 10&nbsp;s (<code>BLE_CONNECT_TIMEOUT_MS</code>), freezing OSD and switch updates for that
+            time. Making the BLE connect non-blocking is on the roadmap.</li>
           <li>Native-USB C3 boards ("Super Mini" and similar) require the <code>ARDUINO_USB_MODE</code> /
             <code>ARDUINO_USB_CDC_ON_BOOT</code> build flags (already set in this repo) — see the
             <a href="setup.html#hardware">hardware note</a> in the setup guide.</li>
@@ -308,21 +389,29 @@
           <li>✅ OTA firmware update from the Web UI</li>
           <li>✅ Wi-Fi power switch on a spare AUX channel</li>
           <li>✅ Web Serial Configurator (GitHub Pages, USB transport)</li>
-          <li>✅ Full DJI telemetry parse (battery %, rec time from DUML notifications)</li>
+          <li>✅ OSD live preview in the Configurator (real Betaflight OSD font)</li>
+          <li>✅ Full DJI telemetry parse (battery %, rec time from DUML notifications, tested with Osmo Nano)</li>
+          <li>✅ Separate Osmo Nano / Osmo Action backends on a shared DUML transport</li>
+          <li>✅ Osmo Action 2 support (polled status, battery and remaining time, heartbeat, in-place
+            session recovery), tested on a borrowed Action 2</li>
+          <li>✅ Wi-Fi AP master switch + Bluetooth TX power setting (Web UI + Configurator)</li>
+          <li>✅ OTA firmware flashing over Web Serial, including through Betaflight passthrough</li>
+          <li>⬜ Non-blocking BLE connect (no loop stall while a saved camera is off)</li>
           <li>⬜ Lightweight MSP config panel ("configurator-lite" subtab)</li>
           <li>⬜ Profiles, camera configuration</li>
-          <li>⬜ OTA firmware flashing over Web Serial (chunked upload + bootloader handshake)</li>
         </ul>
       </section>
       
       <section class="section" id="dji-duml-ble-note">
         <h2>A Note on the DJI Telemetry Parsing</h2>
         <p>
-          <strong>THIS HAS ONLY BEEN TESTED WITH THE OSMO NANO</strong>
-          I cannot confirm that the Telemetry Parsing works for the "Mainline" Osmo Action series
-          (Action 2/3/4/5 Pro/6) as i do not own these cameras, however i have a strong belief that
-          they all use very similar telemetry over DUML so it should work, if it doesnt <a href="https://github.com/FPVShutter/FPVShutter/issues/new" target="_blank" rel="noopener">Leave an Issue</a> 
-          with as much data as you can about the DUML Telemetry and i'll see if i can get it working with you.
+          <strong>Tested on the Osmo Nano and Osmo Action 2 only.</strong>
+          The Action 3 / 4 / 5 Pro / 6 use the Action backend but haven't been tested on hardware, so
+          record control and telemetry may or may not work on them. If you have one, set
+          <code>DJI_ACTION_FRAME_DISCOVERY</code> to 1 (see <a href="#camera-protocols">Camera support
+          notes</a>), grab a log from a short session and
+          <a href="https://github.com/FPVShutter/FPVShutter/issues/new" target="_blank" rel="noopener">leave an issue</a>
+          with it, and I'll see if I can get it working with you.
         </p>
       </section>
       
@@ -338,14 +427,22 @@
         <ul>
           <li><a href="https://github.com/yigitkonur/lib-osmo-ble" target="_blank" rel="noopener">yigitkonur/lib-osmo-ble</a> — DUML-over-BLE wire format &amp; pairing flow</li>
           <li><a href="https://github.com/KonradIT/osmosis" target="_blank" rel="noopener">KonradIT/osmosis</a> — hardware-verified Osmo protocol map</li>
+          <li><a href="https://github.com/o-gs/dji-firmware-tools" target="_blank" rel="noopener">o-gs/dji-firmware-tools</a> — DUML Wireshark dissectors; <code>02/80</code> Camera State Info field layout, which <code>02/71</code> mirrors on the Action 2</li>
+          <li><a href="https://github.com/flosean/RotorREC" target="_blank" rel="noopener">flosean/RotorREC</a> — Action 2 hardware results (polled <code>02/70</code> record state, <code>0D/02</code> battery); protocol facts only, no code used</li>
+          <li><a href="https://github.com/FLORIANSV35/controle-dji-action2" target="_blank" rel="noopener">FLORIANSV35/controle-dji-action2</a> — independent ESP32-C3 Action 2 controller confirming the <code>02/70</code> status poll and <code>02/02</code> record command</li>
           <li><a href="https://github.com/gopro/OpenGoPro" target="_blank" rel="noopener">gopro/OpenGoPro</a> — official Open GoPro BLE specification</li>
           <li><a href="https://github.com/rhoenschrat/DJI-Remote" target="_blank" rel="noopener">rhoenschrat/DJI-Remote</a> — multicam BLE remote reference</li>
           <li><a href="https://github.com/Easy4Racing/bf_custom_osd_msg_example" target="_blank" rel="noopener">Easy4Racing/bf_custom_osd_msg_example</a> — BF custom message reference</li>
           <li><a href="https://github.com/betaflight/betaflight" target="_blank" rel="noopener">betaflight/betaflight</a> — MSP protocol source of truth</li>
           <li><a href="https://itsfpv.de/en-int/products/camlink" target="_blank" rel="noopener">itsfpv CamLink</a> — the commercial product this project replicates</li>
+          <li><a href="https://github.com/betaflight/betaflight-configurator" target="_blank" rel="noopener">betaflight/betaflight-configurator</a> — the stock OSD font (<code>resources/osd/2/betaflight.mcm</code>, <strong>GPL-3.0</strong>), decoded into <code>docs/assets/osd-font.png</code> for the Configurator's OSD live preview</li>
         </ul>
         <p style="margin-top:20px">MIT licensed — do what you want, fly safe, and land your protocols
           responsibly.</p>
+        <p><strong>Exception:</strong> <code>docs/assets/osd-font.png</code> is decoded from
+          betaflight-configurator's stock OSD font and stays <strong>GPL-3.0</strong>, per the upstream
+          license. It's a static image used only for the Configurator's OSD live preview; it isn't linked
+          into the firmware.</p>
       </section>
     </div>
   </div>

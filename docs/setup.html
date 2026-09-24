@@ -68,7 +68,7 @@
             <tr><th>Item</th><th>Notes</th></tr>
             <tr><td><strong>ESP32-C3</strong> board</td><td>DevKitM-1 / "Super Mini" class. BLE 5.0, NimBLE stack.</td></tr>
             <tr><td><strong>Flight controller</strong></td><td>Betaflight with Custom Message OSD elements + one free UART.</td></tr>
-            <tr><td><strong>Camera</strong></td><td>DJI Osmo Action family <strong>or</strong> GoPro HERO8/9/10/11/12/13.</td></tr>
+            <tr><td><strong>Camera</strong></td><td>DJI Osmo Nano, DJI Osmo Action 2 <strong>or</strong> GoPro HERO8/9/10/11/12/13. Other Osmo Action models are untested.</td></tr>
             <tr><td>Wiring</td><td>4 wires: 5&nbsp;V, GND, FC TX, FC RX.</td></tr>
           </table>
         </div>
@@ -161,6 +161,9 @@ pio device monitor -b 115200</code></pre>
               table switched to <code>min_spiffs.csv</code> (BLE + Wi-Fi + web UI need the bigger app
               slot). The native-USB build flags from the hardware note above are required on "Super Mini"
               class boards.</p>
+            <p>You only need the cable for the first flash. After that, new builds can go over Wi-Fi from
+              the <a href="webui.html#ota">Web UI</a>, or from the <a href="console.html">Configurator</a>
+              over USB or Betaflight passthrough, without taking the C3 out of the quad.</p>
           </div>
         </div>
       </section>
@@ -191,8 +194,11 @@ pio device monitor -b 115200</code></pre>
             <ol>
               <li>Power the camera on and put it within a few metres of the ESP32.</li>
               <li>In the Web UI open the <strong>Camera</strong> tab.</li>
-              <li>Tap <strong>Scan for Cameras</strong> — a one-shot 5-second BLE scan runs and lists
-                nearby cameras (brand auto-detected; strongest signal first).
+              <li>Pick your camera model (<strong>Osmo Nano</strong>, <strong>Osmo Action 2</strong> or
+                <strong>GoPro HERO8+</strong>), then tap <strong>Scan for Cameras</strong> — a one-shot
+                5-second BLE scan lists nearby cameras, strongest signal first. The model you pick decides
+                which backend drives the camera, so choose the right one: Nano and Action cameras look
+                alike over Bluetooth, so the scan can't tell them apart.
                 <br><span class="muted">Camera not in the list? Tap "Camera not listed? Show all nearby
                 devices" and pick yours by signal strength (hold it within 1&nbsp;m — the strongest RSSI
                 is usually yours).</span></li>
@@ -222,10 +228,12 @@ pio device monitor -b 115200</code></pre>
             <ol>
               <li>Open the <strong>Controls</strong> tab.</li>
               <li>Pick your <strong>switch channel</strong> (CH5–16 / AUX1–12), the <strong>ON
-                threshold</strong> (default 1500&nbsp;µs) and <strong>debounce</strong> (default
+                threshold</strong> (default 1800&nbsp;µs) and <strong>debounce</strong> (default
                 300&nbsp;ms) — hit <strong>Save switch settings</strong>.</li>
               <li>Optional: enable <strong>Record on arm</strong> (+ <strong>Stop on disarm</strong>) so
-                recording follows the arming state instead of a switch.</li>
+                recording follows the arming state instead of a switch. The <strong>Stop-on-disarm
+                delay</strong> gives you a grace period, so re-arming to turtle out of a crash keeps the
+                same recording going.</li>
               <li>Flip the switch and watch the Dashboard: the record-switch card should flip from IDLE to
                 ON, and the camera starts/stops recording.</li>
             </ol>
@@ -243,8 +251,15 @@ pio device monitor -b 115200</code></pre>
                 battery / arm state / off) to Custom Messages 1–4 with live previews.</li>
               <li><strong>Controls tab:</strong> change the Wi-Fi SSID/password, or assign a spare AUX
                 channel as a <strong>Wi-Fi radio switch</strong> — flip it low in flight and the hotspot
-                powers down to save ~60–100&nbsp;mA (BLE camera control keeps running; the AP always boots
-                ON so you can't lock yourself out).</li>
+                powers down to save ~60–100&nbsp;mA (BLE camera control keeps running; while the AP is
+                enabled it always boots ON so you can't lock yourself out).</li>
+              <li><strong>Wi-Fi access point enabled</strong> (Controls tab): the master switch. Turn it off
+                and the Wi-Fi radio never starts, not even at boot, and the AUX switch can't bring it back.
+                The Web UI disconnects straight away — turn it back on from the
+                <a href="console.html">Configurator</a> over USB or Betaflight passthrough.</li>
+              <li><strong>Bluetooth power</strong> (Controls tab): Low (~-9&nbsp;dBm) / Medium
+                (~0&nbsp;dBm) / High (~+9&nbsp;dBm, default). Lower it if your ELRS receiver loses range
+                with this board mounted close to it. Applies immediately, no reconnect.</li>
             </ul>
             <p class="lead" style="margin-top:18px">Done — go fly. 🚁</p>
           </div>
