@@ -45,7 +45,7 @@ jobs:
           name: firmware.bin
 
       - name: Rename Artifact
-        run: mv .pio/build/esp32c3/firmware.bin ESP32-C3-SuperMini-V2.2.2.bin
+        run: mv firmware.bin ESP32-C3-SuperMini-V2.2.2.bin
           
       - name: Release
         uses: softprops/action-gh-release@v3
