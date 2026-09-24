@@ -301,6 +301,8 @@ bool dumlConnectToCamera(DjiDumlSession &s, CameraTelemetry &telemetry,
 
     strlcpy(telemetry.model, modelName, sizeof(telemetry.model));
     s.lastRxMs = millis();  // Don't trip the staleness watchdog right after connect
+    s.softRecoverAtMs  = 0;
+    s.softRecoverCount = 0;
 
     s.bleState = BLE_AUTHENTICATING;
     s.sessionEstablished = false;
@@ -389,9 +391,44 @@ void dumlUpdate(DjiDumlSession &s, CameraTelemetry &telemetry, CameraType camTyp
             // constantly (~1Hz GeneralStatus and up). If nothing arrives for
             // a long while the link is wedged even if the BLE stack hasn't
             // noticed yet — force a reconnect.
-            if (now - s.lastRxMs >= DJI_LINK_STALE_MS) {
-                DBG("DUML: No camera traffic for %d s — forcing reconnect",
-                    DJI_LINK_STALE_MS / 1000);
+            //
+            // RACE (fixed 2026-09-24): lastRxMs is written by the NimBLE host
+            // task from notify callbacks, while `now` was read at the top of
+            // this tick. A notification landing in between makes lastRxMs a
+            // few ms NEWER than `now`, and the plain unsigned `now - lastRxMs`
+            // wrapped to ~4294967 s — i.e. "stale" on a link that had just
+            // proved it was alive. Snapshot lastRxMs once and treat a
+            // negative age as zero. (Latent on the Nano too; the Action 2's
+            // 500 ms polling just hit it far more often.)
+            const uint32_t lastRx = s.lastRxMs;
+            const int32_t  ageSigned = (int32_t)(now - lastRx);
+            const uint32_t rxAgeMs = ageSigned > 0 ? (uint32_t)ageSigned : 0;
+
+            if (s.softRecoverAtMs != 0 && (int32_t)(lastRx - s.softRecoverAtMs) >= 0) {
+                // Camera answered after the in-place re-auth: recovered.
+                DBG("DUML: camera responding again after in-place re-auth (%lu this session)",
+                    (unsigned long)s.softRecoverCount);
+                s.softRecoverAtMs = 0;
+            }
+            if (rxAgeMs >= DJI_LINK_STALE_MS) {
+                if (s.softRecoverOnStale && s.softRecoverAtMs == 0) {
+                    s.softRecoverCount++;
+                    s.softRecoverAtMs = now;
+                    DBG("DUML: No camera traffic for %lu s but BLE link up — "
+                        "re-sending pairing PIN in place (attempt %lu)",
+                        (unsigned long)(rxAgeMs / 1000),
+                        (unsigned long)s.softRecoverCount);
+                    dumlSendPairingPin(s);
+                    break;
+                }
+                if (s.softRecoverAtMs != 0 &&
+                    now - s.softRecoverAtMs < DJI_SOFT_RECOVER_GRACE_MS) {
+                    break;  // Still waiting on the in-place re-auth reply
+                }
+                DBG("DUML: No camera traffic for %lu s%s — forcing reconnect",
+                    (unsigned long)(rxAgeMs / 1000),
+                    s.softRecoverAtMs ? " (in-place re-auth got no reply)" : "");
+                s.softRecoverAtMs = 0;
                 s.pClient->disconnect();
                 s.bleState = BLE_DISCONNECTED;
                 break;
@@ -413,4 +450,4 @@ void dumlTargetMac(DjiDumlSession &s, const char *mac, const char *logPrefix) {
     s.hasTargetAddress = true;
     s.doConnect        = true;
     DBG("%s: targeting %s (direct connect)", logPrefix, mac);
-}
+}

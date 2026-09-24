@@ -135,9 +135,10 @@ input[type=range]::-moz-range-thumb{width:19px;height:19px;border-radius:50%;bac
 .btn:hover{transform:translateY(-2px);border-color:var(--hi)}
 .btn.primary{background:linear-gradient(135deg,var(--accent),#8a5cf6);border-color:transparent;color:#fff}
 .btn.danger{border-color:rgba(255,77,103,.45)}
-.seg{display:flex;gap:8px}
+.seg{display:flex;gap:8px;flex-wrap:wrap}
+.seg button{min-width:92px}
 .seg button{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;border-radius:15px;
-  border:1px solid var(--stroke);background:var(--glass2);color:var(--dim);font-weight:700;font-size:13.5px;cursor:pointer;transition:var(--tr)}
+  border:1px solid var(--stroke);background:var(--glass2);color:var(--dim);font-weight:700;font-size:13.5px;cursor:pointer;transition:var(--tr);text-align:center}
 .seg button.on{color:var(--txt);border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
 .note{font-size:12.5px;line-height:1.55;color:var(--dim);padding:13px 15px;border-radius:14px;
   background:var(--glass2);border:1px solid var(--stroke);margin-top:13px}
@@ -359,13 +360,23 @@ footer{text-align:center;color:var(--dim);font-size:11.5px;padding:18px 0 6px}
 
   <div class="glass card">
     <h2><svg class="ic"><use href="#i-wifi"/></svg>Wi-Fi access point</h2>
-    <div class="field">
+    <div class="switchrow">
+      <label class="sw"><input type="checkbox" id="swAp" checked><i></i></label>
+      <div class="swinfo"><b>Wi-Fi access point enabled</b>
+        <p>Master switch. Off = the Wi-Fi radio never starts, not even at boot,
+        and the switch below can't bring it back. Use it when you don't want any
+        Wi-Fi next to your ELRS receiver.</p></div>
+    </div>
+    <div class="note" id="apOffWarn" style="display:none"><b>Turning this off
+      disconnects this page.</b> To turn Wi-Fi back on later, use the
+      FPVShutter Configurator over USB or Betaflight serial passthrough.</div>
+    <div class="field" id="wifiChField" style="margin-top:14px;transition:var(--tr)">
       <label>Wi-Fi radio switch</label>
       <select id="selWifiCh"></select>
       <div class="note">Assign a spare switch: flip it low in flight and the
         Wi-Fi radio powers down completely (saves battery, BLE camera link keeps
-        running). Flip high to bring the hotspot back. The AP always starts ON
-        at boot so you can't lock yourself out.</div>
+        running). Flip high to bring the hotspot back. While the access point is
+        enabled it always starts ON at boot, so the switch can't lock you out.</div>
     </div>
     <div class="field"><label>Network name (SSID)<span id="lblSsid"></span></label>
       <input type="text" id="inSsid" maxlength="32" placeholder="FPVShutter"></div>
@@ -374,6 +385,20 @@ footer{text-align:center;color:var(--dim);font-size:11.5px;padding:18px 0 6px}
     <button class="btn primary" id="saveWifi">Save Wi-Fi &amp; restart AP</button>
     <div class="note">Saving restarts the access point — your phone will disconnect.
       Reconnect to the new network name to continue.</div>
+  </div>
+
+  <div class="glass card">
+    <h2><svg class="ic"><use href="#i-bt"/></svg>Bluetooth power</h2>
+    <div class="seg" id="blePowerSeg">
+      <button data-ble="0">Low</button>
+      <button data-ble="1">Medium</button>
+      <button data-ble="2">High</button>
+    </div>
+    <div class="note" style="margin-top:12px">Sets how strongly the camera link
+      transmits. <b>High</b> gives the most range and is the default. Try
+      <b>Medium</b> or <b>Low</b> if your ELRS receiver loses range when this
+      board sits right next to it; keep the camera close if you do. Takes effect
+      straight away, with no reconnect.</div>
   </div>
 </section>
 
@@ -394,7 +419,13 @@ footer{text-align:center;color:var(--dim);font-size:11.5px;padding:18px 0 6px}
 <!-- =================== CARD 3: DISCOVER NEW CAMERA =================== -->
   <div class="glass card">
     <h2><svg class="ic"><use href="#i-refresh"/></svg>Discover new camera</h2>
-    <p style="font-size:13px;color:var(--dim);margin-bottom:14px">Press Scan to find nearby cameras. Type is auto-detected.</p>
+    <div class="seg" id="discoverSeg">
+      <button id="selNano" data-brand="0"><svg class="ic"><use href="#i-aperture"/></svg>Osmo Nano</button>
+      <button id="selAction" data-brand="2"><svg class="ic"><use href="#i-aperture"/></svg>Osmo Action 2</button>
+      <button id="selGp" data-brand="1"><svg class="ic"><use href="#i-bt"/></svg>GoPro HERO8+</button>
+    </div>
+    <p style="font-size:12.5px;color:var(--dim);margin-top:10px">Pick your camera
+      model, then scan. The model decides how FPVShutter talks to the camera.</p>
     <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
       <button class="btn primary" id="scanBtn">
         <svg class="ic" style="vertical-align:middle" id="scanIcon"><use href="#i-refresh"/></svg>
@@ -419,7 +450,7 @@ footer{text-align:center;color:var(--dim);font-size:11.5px;padding:18px 0 6px}
       <b>Scan for Cameras</b> &rarr; 3) power the camera on nearby &rarr; 4) tap
       <b>Pair & Save</b> on the device. Nothing connects until you confirm.
       First GoPro connection needs one approval tap on the camera screen; DJI
-      may show an approve prompt too.</div>
+      cameras show an approve prompt the first time too.</div>
   </div>
 </section>
 
@@ -532,8 +563,30 @@ if (typeof toast !== 'function') {
 'use strict';
 const $=id=>document.getElementById(id);
 let S=null;
-let pendingBrand;
+let pendingBrand=-1;
 let settingsLoaded=false;
+
+/* ---------- camera brands (CameraType: 0 Nano, 1 GoPro, 2 Action) ---------- */
+const BRAND_NAMES={0:'DJI Osmo Nano',1:'GoPro',2:'DJI Osmo Action'};
+const brandName=t=>BRAND_NAMES[t]||'DJI Osmo';
+const brandIcon=t=>t===1?'i-bt':'i-aperture';
+/* Numeric type of a scan result. Newer firmware sends r.ty; older only the
+   display string r.t, where anything not 'GoPro' used to mean DJI (Nano). */
+const resultType=r=>(typeof r.ty==='number')?r.ty:(r.t==='GoPro'?1:0);
+function syncBrandSeg(){
+  const cur=(pendingBrand>=0)?pendingBrand:(S&&S.cam?S.cam.type:-1);
+  document.querySelectorAll('#discoverSeg [data-brand]').forEach(b=>
+    b.classList.toggle('on',+b.dataset.brand===cur));
+}
+function syncRadioUI(){
+  if(!S)return;
+  const apOn=S.wifiApEnabled!==false;
+  if(document.activeElement!==$('swAp'))$('swAp').checked=apOn;
+  $('wifiChField').style.opacity=apOn?1:.55;
+  $('selWifiCh').disabled=!apOn;
+  document.querySelectorAll('#blePowerSeg [data-ble]').forEach(b=>
+    b.classList.toggle('on',+b.dataset.ble===S.blePower));
+}
 
 /* ---------- render helpers (must be before render() is called) ---------- */
 const ST_COLORS={READY:'var(--ok)',CONNECTING:'var(--warn)',PAIRING:'var(--warn)',
@@ -562,8 +615,8 @@ async function loadInitialSettings(){
       if($('selWifiCh'))$('selWifiCh').value=(S.wifiSwitch!=null&&S.wifiSwitch>=0)?S.wifiSwitch:255;
       // Set brand pills based on loaded camera type
       pendingBrand=S.cam?S.cam.type:-1;
-      if($('selDji'))$('selDji').classList.toggle('on',!!S.cam&&S.cam.type===0);
-      if($('selGp'))$('selGp').classList.toggle('on',!!S.cam&&S.cam.type===1);
+      syncBrandSeg();
+      syncRadioUI();
       syncScanAllToggle();
       renderActiveCam();
       renderCams();
@@ -584,7 +637,7 @@ loadInitialSettings();
 /* ---------- build Wi-Fi switch select (255 = disabled) ---------- */
 (()=>{const s=$('selWifiCh');
   const off=document.createElement('option');off.value=255;
-  off.textContent='Disabled \u00b7 AP always on';s.appendChild(off);
+  off.textContent='Not assigned';s.appendChild(off);
   for(let i=0;i<16;i++){const o=document.createElement('option');
     o.value=i;o.textContent=i<4?('CH'+(i+1)):('CH'+(i+1)+' \u00b7 AUX'+(i-3));
     s.appendChild(o);}})();
@@ -702,15 +755,14 @@ function renderActiveCam(){
     showDisconnect=false;
   }
 
-  const ico=active.t?'i-bt':'i-aperture';
-  const brandName=active.t?'GoPro':'DJI Osmo';
+  const ico=brandIcon(active.t);
 
   host.innerHTML=
     '<div class="active-card">'+
       '<svg class="ic-lg"><use href="#'+ico+'"/></svg>'+
       '<div class="ac-info">'+
         '<b>'+esc(active.n||active.m)+'</b>'+
-        '<span>'+esc(active.m)+' \u00b7 '+brandName+'</span>'+
+        '<span>'+esc(active.m)+' \u00b7 '+brandName(active.t)+'</span>'+
       '</div>'+
       '<div class="ac-actions">'+badge+
         (showDisconnect?'<button class="btn disconnect" data-disconnect="'+list.indexOf(active)+'">Disconnect</button>':'')+
@@ -736,9 +788,9 @@ function renderCams(){
       : '';
     const act=c.a?'<span class="chip" style="color:var(--accent)">ACTIVE</span>'
                  :'<button class="btn mini" data-connect="'+i+'">'+(isOnline?'Connect':'Offline')+'</button>';
-    return '<div class="camrow" data-mac="'+esc(c.m)+'" data-type="'+(c.t?1:0)+'">'+
-      '<svg class="ic" style="color:'+(c.t?'var(--accent)':'var(--txt)')+'"><use href="#'+(c.t?'i-bt':'i-aperture')+'"/></svg>'+
-      '<div class="ci"><b>'+esc(c.n||c.m)+'</b><span>'+esc(c.m)+' \u00b7 '+(c.t?'GoPro':'DJI Osmo')+'</span></div>'+
+    return '<div class="camrow" data-mac="'+esc(c.m)+'" data-type="'+c.t+'">'+
+      '<svg class="ic" style="color:'+(c.t===1?'var(--accent)':'var(--txt)')+'"><use href="#'+brandIcon(c.t)+'"/></svg>'+
+      '<div class="ci"><b>'+esc(c.n||c.m)+'</b><span>'+esc(c.m)+' \u00b7 '+brandName(c.t)+'</span></div>'+
       stateBadge+act+
       '<button class="xbtn" data-forget="'+i+'" title="Forget camera">&times;</button></div>';
   }).join('');
@@ -846,14 +898,15 @@ function renderDiscovered(){
     return;
   }
   host.innerHTML=newOnes.map(r=>{
-    const typeLabel=r.t==='GoPro'?'GoPro':'DJI Osmo';
-    const typeIcon=r.t==='GoPro'?'i-bt':'i-aperture';
+    const ty=resultType(r);
+    const typeLabel=brandName(ty);
+    const typeIcon=brandIcon(ty);
     return '<div class="discrow" data-mac="'+esc(r.mac)+'">'+
       '<svg class="ic" style="color:var(--warn)"><use href="#'+typeIcon+'"/></svg>'+
       '<div class="ci"><b>'+esc(r.n||r.mac)+'</b>'+
         '<span>'+esc(r.mac)+' \u00b7 '+typeLabel+'</span></div>'+
       rssiBars(r.rssi)+
-      '<button class="btn pair-save" data-pair="'+esc(r.mac)+'" data-pair-type="'+(r.t==='GoPro'?1:0)+'">Pair &amp; Save</button>'+
+      '<button class="btn pair-save" data-pair="'+esc(r.mac)+'" data-pair-type="'+ty+'">Pair &amp; Save</button>'+
     '</div>';
   }).join('');
 }
@@ -918,8 +971,45 @@ function startCooldownTicker(){
   },500);
 }
 
-if($('selDji'))$('selDji').onclick=()=>{try{pendingBrand=0;syncDiscoverUI();}catch(e){console.error(e);}};
-if($('selGp'))$('selGp').onclick=()=>{try{pendingBrand=1;syncDiscoverUI();}catch(e){console.error(e);}};
+document.querySelectorAll('#discoverSeg [data-brand]').forEach(b=>{
+  b.onclick=()=>{try{pendingBrand=+b.dataset.brand;syncBrandSeg();syncDiscoverUI();}catch(e){console.error(e);}};
+});
+
+/* ---------- Wi-Fi AP master switch ---------- */
+$('swAp').onchange=async()=>{
+  const want=$('swAp').checked;
+  if(!want){
+    $('apOffWarn').style.display='block';
+    if(!confirm('Turn the Wi-Fi access point off?\n\nThis page will disconnect straight away. '+
+        'To turn Wi-Fi back on, use the FPVShutter Configurator over USB or '+
+        'Betaflight serial passthrough.')){
+      $('swAp').checked=true;$('apOffWarn').style.display='none';return;
+    }
+  }
+  try{
+    const j=await api('/api/settings',{wifiApEnabled:want});
+    if(j.ok){
+      if(S)S.wifiApEnabled=want;
+      toast(want?'Wi-Fi access point enabled':'Wi-Fi access point off \u2014 disconnecting');
+    }else{
+      $('swAp').checked=!want;toast('Error: '+(j.error||'?'));
+    }
+  }catch(e){console.error('swAp error:',e);toast('Error: '+e.message);}
+  $('apOffWarn').style.display='none';
+  syncRadioUI();
+};
+
+/* ---------- BLE TX power ---------- */
+document.querySelectorAll('#blePowerSeg [data-ble]').forEach(b=>{
+  b.onclick=async()=>{
+    const lvl=+b.dataset.ble;
+    try{
+      const j=await api('/api/settings',{blePower:lvl});
+      if(j.ok){if(S)S.blePower=lvl;syncRadioUI();toast('Bluetooth power: '+b.textContent);}
+      else toast('Error: '+(j.error||'?'));
+    }catch(e){console.error('blePower error:',e);toast('Error: '+e.message);}
+  };
+});
 
 /* ---------- Tab switching ---------- */
 document.querySelectorAll('.tabbtn').forEach(btn=>{
@@ -975,7 +1065,7 @@ $('scanBtn').onclick=async()=>{
     // 1) If the picked brand differs from the active backend, set it
     //    first (no scan side-effect — this only changes settings.camera).
     const wantBrand = pendingBrand;
-    const curBrand  = (S&&S.cam)?S.cam.type:settingsGet()?0:0;
+    const curBrand  = (S&&S.cam)?S.cam.type:-1;
     if (curBrand !== wantBrand){
       const j = await api('/api/settings',{camera:wantBrand});
       if(!j.ok){toast('Error: '+(j.error||'?'));return;}
@@ -1000,7 +1090,7 @@ $('scanBtn').onclick=async()=>{
     startScanPoll();
     startCooldownTicker();
     syncDiscoverUI();
-    toast('Scanning for '+(pendingBrand?'GoPro':'DJI Osmo')+'\u2026');
+    toast('Scanning for '+brandName(pendingBrand)+'\u2026');
   }catch(e){console.error('scanBtn error:',e);toast('Error: '+e.message);}
 };
 $('saveWifi').onclick=async()=>{
@@ -1219,10 +1309,8 @@ async function poll(){
       if(ae!==$('selWifiCh'))$('selWifiCh').value=(S.wifiSwitch!=null&&S.wifiSwitch>=0)?S.wifiSwitch:255;
       // brand pills reflect the live backend brand only when user has NOT
       // already picked a pending brand.
-      if(pendingBrand<0){
-        $('selDji').classList.toggle('on',!!S.cam&&S.cam.type===0);
-        $('selGp').classList.toggle('on',!!S.cam&&S.cam.type===1);
-      }
+      syncBrandSeg();
+      syncRadioUI();
       renderActiveCam();
       renderCams();
       renderDiscovered();

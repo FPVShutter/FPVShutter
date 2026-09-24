@@ -119,13 +119,15 @@
   <!-- Camera -->
   <section class="card">
     <h2>Camera</h2>
-    <label>Backend
+    <label>Camera model
       <select id="camType">
-        <option value="0">DJI Osmo</option>
-        <option value="1">GoPro</option>
+        <option value="0">DJI Osmo Nano</option>
+        <option value="2">DJI Osmo Action 2</option>
+        <option value="1">GoPro HERO8+</option>
       </select>
     </label>
-    <button id="btnApplyCamType" class="btn small">Apply backend</button>
+    <p class="hint">Pick your model, then scan. Scanning switches the backend to this model if it
+      isn't active already. Nano and Action cameras look alike over Bluetooth, so pick the right one.</p>
 
     <h3>Saved cameras</h3>
     <ul id="savedCamList" class="list">
@@ -206,6 +208,10 @@
   <!-- Wi-Fi -->
   <section class="card">
     <h2>Wi-Fi AP</h2>
+    <label class="switch-label"><input type="checkbox" id="wifiApEnabled"> Wi-Fi access point enabled (master switch)</label>
+    <p class="hint">Applies immediately. Off = the Wi-Fi radio never starts, not even at boot, and the
+      radio switch channel can't override it; anyone on the field Web UI is disconnected. This console
+      (USB or FC passthrough) is the way to turn it back on.</p>
     <label>SSID
       <input type="text" id="apSsid" maxlength="32">
     </label>
@@ -217,8 +223,23 @@
     </label>
     <label class="switch-label"><input type="checkbox" id="scanAll"> Show all nearby BLE devices when scanning</label>
     <button id="btnSaveWifi" class="btn">Save Wi-Fi settings</button>
-    <p class="hint">Changing SSID/password restarts the AP — you'll need to reconnect the phone/PC Wi-Fi
-      that talks to the field Web UI. This USB console link is unaffected.</p>
+    <p class="hint">SSID/password are only sent when the SSID box is filled in (leave the password blank
+      with a new SSID for an open network). Changing them restarts the AP, so reconnect the phone/PC
+      that uses the field Web UI. This console link is unaffected.</p>
+  </section>
+
+  <!-- Bluetooth -->
+  <section class="card">
+    <h2>Bluetooth power</h2>
+    <label>Camera link TX power
+      <select id="blePower">
+        <option value="0">Low (~-9 dBm)</option>
+        <option value="1">Medium (~0 dBm)</option>
+        <option value="2">High (~+9 dBm, default)</option>
+      </select>
+    </label>
+    <p class="hint">Applies immediately, no reconnect. High gives the most range. Try Medium or Low if
+      your ELRS receiver loses range with this board mounted next to it, and keep the camera close.</p>
   </section>
 
   <!-- MSP -->

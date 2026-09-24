@@ -1,17 +1,17 @@
 // ============================================================================
 // dji_action_camera.h — DUML-over-BLE backend for DJI Osmo Action cameras
 // ============================================================================
-// PROTOTYPE. Forked from dji_camera.cpp: this file is a near-verbatim copy
-// of the previous "DJI Osmo" backend's behaviour — device-ID filters,
-// pairing, record opcodes, telemetry offsets — kept as-is.
+// Target: DJI Osmo Action 2 (first Action-line camera on this fork's bench).
+// Shares pairing / record opcodes / transport with the Nano backend via
+// dji_duml_transport; differs in telemetry: recording state and battery
+// are POLLED (02/70, 0D/02) instead of arriving as unsolicited pushes.
 //
-// STATUS: assumed compatible, NEVER TESTED on real Action hardware. This
-// project only owns an Osmo Nano; everything model-specific in this file is
-// inherited from what was already here, some of which (see
-// dji_action_camera.cpp) may itself have been tuned against Nano captures
-// during earlier telemetry RE work despite the "Action" label. Treat this
-// as a starting point to verify/fix once real Action hardware is available,
-// not as confirmed behaviour. See PROTOTYPE_NOTES.md.
+// STATUS: hardware-verified on an Action 2 (2026-09-24) — pairing, record
+// control, record state, battery, remaining time, heartbeat and reconnect.
+// Built from two independent Action 2 projects plus this repo's upstream
+// Action 2 work (sources in dji_action_camera.cpp). Action 3/4/5 are untested here; the newer models also speak
+// DJI's official 0xAA-framed camera-remote protocol (Osmo GPS Controller
+// SDK), which may turn out to need a backend of its own.
 // ============================================================================
 
 #ifndef DJI_ACTION_CAMERA_H
@@ -38,4 +38,4 @@ void                djiActionStartScan();
 /// Surfaced via /api/status and shown as a toast in the Web UI.
 const char*         djiActionGetLastError();
 
-#endif // DJI_ACTION_CAMERA_H
+#endif // DJI_ACTION_CAMERA_H
