@@ -118,8 +118,8 @@
 #define DEFAULT_BLE_POWER         BLE_POWER_HIGH
 
 // SoftAP credentials for the Web UI (password empty = open network).
-#define WIFI_AP_DEFAULT_SSID      "ShutterLink"
-#define WIFI_AP_DEFAULT_PASS      ""
+#define WIFI_AP_DEFAULT_SSID      "FPVShutter"
+#define WIFI_AP_DEFAULT_PASS      "fpvshutter"
 
 // Default content of Betaflight Custom Message slots 1..4 (OsdSlotContent).
 #define DEFAULT_OSD_SLOT_1        OSD_SLOT_CAM_STATUS
