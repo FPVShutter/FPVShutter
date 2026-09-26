@@ -68,7 +68,7 @@
             <tr><th>Item</th><th>Notes</th></tr>
             <tr><td><strong>ESP32-C3</strong> board</td><td>DevKitM-1 / "Super Mini" class. BLE 5.0, NimBLE stack.</td></tr>
             <tr><td><strong>Flight controller</strong></td><td>Betaflight with Custom Message OSD elements + one free UART.</td></tr>
-            <tr><td><strong>Camera</strong></td><td>DJI Osmo Nano, DJI Osmo Action 2 <strong>or</strong> GoPro HERO8/9/10/11/12/13. Other Osmo Action models are untested.</td></tr>
+            <tr><td><strong>Camera</strong></td><td>DJI Osmo Nano, DJI Osmo Action 2, DJI Osmo Action 4 <strong>or</strong> GoPro HERO8/9/10/11/12/13. The Action 3, 5 Pro, 6 and Osmo 360 are untested.</td></tr>
             <tr><td>Wiring</td><td>4 wires: 5&nbsp;V, GND, FC TX, FC RX.</td></tr>
           </table>
         </div>
@@ -194,10 +194,10 @@ pio device monitor -b 115200</code></pre>
             <ol>
               <li>Power the camera on and put it within a few metres of the ESP32.</li>
               <li>In the Web UI open the <strong>Camera</strong> tab.</li>
-              <li>Pick your camera model (<strong>Osmo Nano</strong>, <strong>Osmo Action 2</strong> or
-                <strong>GoPro HERO8+</strong>), then tap <strong>Scan for Cameras</strong> — a one-shot
+              <li>Pick your camera model (<strong>Osmo Nano</strong>, <strong>Osmo Action 2</strong>,
+                <strong>Osmo Action 4/5/6</strong> or <strong>GoPro HERO8+</strong>), then tap <strong>Scan for Cameras</strong> — a one-shot
                 5-second BLE scan lists nearby cameras, strongest signal first. The model you pick decides
-                which backend drives the camera, so choose the right one: Nano and Action cameras look
+                which backend drives the camera, so choose the right one: DJI cameras look
                 alike over Bluetooth, so the scan can't tell them apart.
                 <br><span class="muted">Camera not in the list? Tap "Camera not listed? Show all nearby
                 devices" and pick yours by signal strength (hold it within 1&nbsp;m — the strongest RSSI

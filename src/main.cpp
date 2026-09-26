@@ -1,5 +1,5 @@
 // ============================================================================
-// main.cpp — ESP32-C3 ShutterLink: Main Entry Point & State Machine
+// main.cpp — ESP32-C3 FPVShutter: Main Entry Point & State Machine
 // ============================================================================
 // Open-source camera control bridge.
 //
@@ -171,7 +171,7 @@ void setup() {
     delay(1000);  // Allow USB CDC to enumerate
 
     DBG("============================================");
-    DBG("  ESP32-C3 ShutterLink v2.0");
+    DBG("  ESP32-C3 FPVShutter v2.3");
     DBG("  Betaflight <-> DJI Osmo / GoPro bridge");
     DBG("============================================");
 

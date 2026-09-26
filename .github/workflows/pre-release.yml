@@ -49,8 +49,8 @@ jobs:
       - name: Release
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: v2.2.2-pre 
-          name: FPVShutter v2.2.2 Prerelease
+          tag_name: v2.3-pre 
+          name: FPVShutter v2.3 Prerelease
           files: firmware.bin
           prerelease: true
           draft: true

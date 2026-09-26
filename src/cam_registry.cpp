@@ -60,7 +60,7 @@ static bool macEquals(const char *a, const char *b) {
 
 static void persist() {
     Preferences prefs;
-    if (!prefs.begin("shutterlink", false)) return;
+    if (!prefs.begin("fpvshutter", false)) return;
 
     ShutterSettings &s = settingsGet();
     prefs.putUChar("camCnt", s.camCount);
@@ -84,7 +84,7 @@ void camRegistryLoad() {
     ShutterSettings &s = settingsGet();
     memset(s.cams, 0, sizeof(s.cams));
     s.camCount = 0;
-    if (!prefs.begin("shutterlink", true)) return;
+    if (!prefs.begin("fpvshutter", true)) return;
 
     uint8_t cnt = prefs.getUChar("camCnt", 0);
     if (cnt > MAX_SAVED_CAMERAS) cnt = MAX_SAVED_CAMERAS;

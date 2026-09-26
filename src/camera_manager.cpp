@@ -129,7 +129,7 @@ void camInit() {
     initMutexes();
 
     DBG("CAM: Initialising NimBLE stack...");
-    NimBLEDevice::init("ESP32-ShutterLink");
+    NimBLEDevice::init("ESP32-FPVShutter");
     NimBLEDevice::setPower(blePowerToEspLevel(settingsGet().blePower));
     DBG("CAM: BLE TX power = %s", blePowerName(settingsGet().blePower));
 
