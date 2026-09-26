@@ -126,6 +126,7 @@ const char* cameraTypeName(CameraType type) {
     switch (type) {
         case CAMERA_GOPRO:      return "GoPro";
         case CAMERA_DJI_ACTION: return "DJI Osmo Action";
+        case CAMERA_DJI_RSDK:   return "DJI Osmo Action 4+";
         case CAMERA_DJI_NANO:
         default:                return "DJI Osmo Nano";
     }

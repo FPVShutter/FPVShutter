@@ -20,7 +20,7 @@
 #define SCAN_RESULT_TTL_MS    15000UL   // evict entries not seen for >15s
 
 struct ScanResult {
-    uint8_t type;               // CameraType (CAMERA_DJI_NANO / CAMERA_GOPRO / CAMERA_DJI_ACTION)
+    uint8_t type;               // CameraType (CAMERA_DJI_NANO / CAMERA_GOPRO / CAMERA_DJI_ACTION / CAMERA_DJI_RSDK)
     char    mac[18];            // "AA:BB:CC:DD:EE:FF"
     char    name[24];           // Advertised name (may be empty)
     int8_t  rssi;               // Signal strength in dBm

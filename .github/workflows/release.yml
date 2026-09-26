@@ -56,6 +56,6 @@ jobs:
           name: FPVShutter v2.2.2
           files: ESP32-C3-SuperMini-V2.2.2.bin
           prerelease: false
-          generate_release_notes: true
+          draft: true
           token: ${{ github.token }}
   

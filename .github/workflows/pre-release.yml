@@ -3,6 +3,8 @@ on:
   push:
       paths:
       - 'src/**'
+      branches:
+      - 'V**'
 
 jobs:
   build:
@@ -51,6 +53,6 @@ jobs:
           name: FPVShutter v2.2.2 Prerelease
           files: firmware.bin
           prerelease: true
-          generate_release_notes: true
+          draft: true
           token: ${{ github.token }}
   

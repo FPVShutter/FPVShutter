@@ -27,10 +27,12 @@
 // exactly what it meant before (this project's actual paired camera, the
 // Nano) and camera=1 is untouched. CAMERA_DJI_ACTION is a new value (2), so
 // no migration is needed for existing saved settings/paired cameras.
+// CAMERA_DJI_RSDK (3) follows the same rule: a new value, nothing migrates.
 enum CameraType : uint8_t {
     CAMERA_DJI_NANO   = 0,   // DJI Osmo Nano (DUML over BLE) — hardware-verified
     CAMERA_GOPRO      = 1,   // GoPro HERO8+ (Open GoPro BLE API)
     CAMERA_DJI_ACTION = 2,   // DJI Osmo Action 2 (DUML over BLE, polled telemetry) — hardware-verified
+    CAMERA_DJI_RSDK   = 3,   // DJI Osmo Action 4 / 5 Pro / 6, Osmo 360 (DJI R SDK over BLE) — not yet bench-tested
 };
 
 // ──────────────────────────────────────────────────────────────────────────────

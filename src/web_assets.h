@@ -422,6 +422,7 @@ footer{text-align:center;color:var(--dim);font-size:11.5px;padding:18px 0 6px}
     <div class="seg" id="discoverSeg">
       <button id="selNano" data-brand="0"><svg class="ic"><use href="#i-aperture"/></svg>Osmo Nano</button>
       <button id="selAction" data-brand="2"><svg class="ic"><use href="#i-aperture"/></svg>Osmo Action 2</button>
+      <button id="selRsdk" data-brand="3"><svg class="ic"><use href="#i-aperture"/></svg>Osmo Action 4/5/6</button>
       <button id="selGp" data-brand="1"><svg class="ic"><use href="#i-bt"/></svg>GoPro HERO8+</button>
     </div>
     <p style="font-size:12.5px;color:var(--dim);margin-top:10px">Pick your camera
@@ -566,8 +567,8 @@ let S=null;
 let pendingBrand=-1;
 let settingsLoaded=false;
 
-/* ---------- camera brands (CameraType: 0 Nano, 1 GoPro, 2 Action) ---------- */
-const BRAND_NAMES={0:'DJI Osmo Nano',1:'GoPro',2:'DJI Osmo Action'};
+/* ---------- camera brands (CameraType: 0 Nano, 1 GoPro, 2 Action 2, 3 Action 4+) ---------- */
+const BRAND_NAMES={0:'DJI Osmo Nano',1:'GoPro',2:'DJI Osmo Action',3:'DJI Osmo Action 4+'};
 const brandName=t=>BRAND_NAMES[t]||'DJI Osmo';
 const brandIcon=t=>t===1?'i-bt':'i-aperture';
 /* Numeric type of a scan result. Newer firmware sends r.ty; older only the
@@ -1236,8 +1237,11 @@ function render(){
   } else {
     chip.textContent=r.desired?'RECORDING':'STANDBY';
     chip.className='chip '+(r.desired?'rec':'ok');
-    tEl.textContent=(c.recTime!=null)?(r.desired?mmss(c.recTime):humanTime(c.recTime)):'--:--';
-    tEl.style.color=r.desired?'var(--rec)':'var(--txt)';
+    // recTime is elapsed while the CAMERA is recording, remaining otherwise;
+    // c.recording is the camera's own state (older firmware: fall back to desired).
+    const camRec=(typeof c.recording==='boolean')?c.recording:r.desired;
+    tEl.textContent=(c.recTime!=null)?(camRec?mmss(c.recTime):humanTime(c.recTime)):'--:--';
+    tEl.style.color=camRec?'var(--rec)':'var(--txt)';
     $('statecap').textContent=(c.model||c.name||'camera')+' \u00b7 ready';
   }
 

@@ -1,6 +1,9 @@
 // ============================================================================
 // camera_manager.cpp — Runtime camera backend dispatcher
 // ============================================================================
+// Dispatch covers four backends: DJI Osmo Nano, DJI Osmo Action (2,
+// DUML), DJI Osmo Action 4+ (R SDK, dji_rsdk_camera.cpp) and GoPro.
+//
 // PROTOTYPE: dispatch is now a 3-way switch (DJI Osmo Nano / DJI Osmo
 // Action / GoPro) instead of the previous 2-way ternary, now that the old
 // single "dji_camera" backend has been split into dji_nano_camera.cpp
@@ -16,6 +19,7 @@
 #include "camera_manager.h"
 #include "dji_nano_camera.h"
 #include "dji_action_camera.h"
+#include "dji_rsdk_camera.h"
 #include "gopro_camera.h"
 #include <NimBLEDevice.h>
 #include <freertos/FreeRTOS.h>
@@ -108,6 +112,7 @@ static void initBackend(CameraType type) {
     switch (type) {
         case CAMERA_GOPRO:      gpInit();        break;
         case CAMERA_DJI_ACTION: djiActionInit(); break;
+        case CAMERA_DJI_RSDK:   djiRsdkInit();   break;
         case CAMERA_DJI_NANO:
         default:                djiNanoInit();   break;
     }
@@ -143,6 +148,7 @@ void camUpdate() {
     switch (settingsGet().camera) {
         case CAMERA_GOPRO:      gpUpdate();        break;
         case CAMERA_DJI_ACTION: djiActionUpdate(); break;
+        case CAMERA_DJI_RSDK:   djiRsdkUpdate();   break;
         case CAMERA_DJI_NANO:
         default:                djiNanoUpdate();   break;
     }
@@ -153,6 +159,7 @@ bool camSendStartRecord() {
     switch (settingsGet().camera) {
         case CAMERA_GOPRO:      return gpSendStartRecord();
         case CAMERA_DJI_ACTION: return djiActionSendStartRecord();
+        case CAMERA_DJI_RSDK:   return djiRsdkSendStartRecord();
         case CAMERA_DJI_NANO:
         default:                return djiNanoSendStartRecord();
     }
@@ -163,6 +170,7 @@ bool camSendStopRecord() {
     switch (settingsGet().camera) {
         case CAMERA_GOPRO:      return gpSendStopRecord();
         case CAMERA_DJI_ACTION: return djiActionSendStopRecord();
+        case CAMERA_DJI_RSDK:   return djiRsdkSendStopRecord();
         case CAMERA_DJI_NANO:
         default:                return djiNanoSendStopRecord();
     }
@@ -173,6 +181,7 @@ BleConnectionState camGetState() {
     switch (settingsGet().camera) {
         case CAMERA_GOPRO:      return gpGetState();
         case CAMERA_DJI_ACTION: return djiActionGetState();
+        case CAMERA_DJI_RSDK:   return djiRsdkGetState();
         case CAMERA_DJI_NANO:
         default:                return djiNanoGetState();
     }
@@ -184,6 +193,7 @@ const CameraTelemetry& camGetTelemetry() {
     switch (settingsGet().camera) {
         case CAMERA_GOPRO:      return gpGetTelemetry();
         case CAMERA_DJI_ACTION: return djiActionGetTelemetry();
+        case CAMERA_DJI_RSDK:   return djiRsdkGetTelemetry();
         case CAMERA_DJI_NANO:
         default:                return djiNanoGetTelemetry();
     }
@@ -194,6 +204,7 @@ bool camIsReady() {
     switch (settingsGet().camera) {
         case CAMERA_GOPRO:      return gpIsReady();
         case CAMERA_DJI_ACTION: return djiActionIsReady();
+        case CAMERA_DJI_RSDK:   return djiRsdkIsReady();
         case CAMERA_DJI_NANO:
         default:                return djiNanoIsReady();
     }
@@ -208,6 +219,7 @@ const char* camGetLastError() {
     switch (settingsGet().camera) {
         case CAMERA_GOPRO:      return gpGetLastError();
         case CAMERA_DJI_ACTION: return djiActionGetLastError();
+        case CAMERA_DJI_RSDK:   return djiRsdkGetLastError();
         case CAMERA_DJI_NANO:
         default:                return djiNanoGetLastError();
     }
@@ -249,6 +261,7 @@ void camKick() {
     switch ((CameraType)c.type) {
         case CAMERA_GOPRO:      gpTargetMac(c.mac);        break;
         case CAMERA_DJI_ACTION: djiActionTargetMac(c.mac); break;
+        case CAMERA_DJI_RSDK:   djiRsdkTargetMac(c.mac);   break;
         case CAMERA_DJI_NANO:
         default:                djiNanoTargetMac(c.mac);   break;
     }
@@ -298,6 +311,7 @@ void camStartUserScan() {
     switch (t) {
         case CAMERA_GOPRO:      gpStartScan();        break;
         case CAMERA_DJI_ACTION: djiActionStartScan(); break;
+        case CAMERA_DJI_RSDK:   djiRsdkStartScan();   break;
         case CAMERA_DJI_NANO:
         default:                djiNanoStartScan();   break;
     }

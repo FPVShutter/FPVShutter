@@ -9,9 +9,9 @@
 // STATUS: hardware-verified on an Action 2 (2026-09-24) — pairing, record
 // control, record state, battery, remaining time, heartbeat and reconnect.
 // Built from two independent Action 2 projects plus this repo's upstream
-// Action 2 work (sources in dji_action_camera.cpp). Action 3/4/5 are untested here; the newer models also speak
-// DJI's official 0xAA-framed camera-remote protocol (Osmo GPS Controller
-// SDK), which may turn out to need a backend of its own.
+// Action 2 work (sources in dji_action_camera.cpp). The Action 3 is untested.
+// The Action 4 / 5 Pro / 6 speak DJI's official R SDK protocol and have their
+// own backend: dji_rsdk_camera.h (camera type 3).
 // ============================================================================
 
 #ifndef DJI_ACTION_CAMERA_H
