@@ -1,7 +1,7 @@
 // ============================================================================
 // config.h — Project-wide configuration, pin definitions, and tunables
 // ============================================================================
-// ESP32-C3 ShutterLink: Betaflight ↔ DJI Osmo / GoPro camera bridge.
+// ESP32-C3 FPVShutter: Betaflight ↔ DJI Osmo / GoPro camera bridge.
 //
 // Runtime-changeable options (camera brand, switch channel, record-on-arm,
 // OSD slot contents, Wi-Fi credentials) live in settings.h / NVS and are
@@ -63,7 +63,8 @@
 // ──────────────────────────────────────────────────────────────────────────────
 
 // Active camera backend: 0 = DJI Osmo Nano, 1 = GoPro HERO8 and newer,
-// 2 = DJI Osmo Action 2 (see dji_action_camera.h).
+// 2 = DJI Osmo Action 2 (see dji_action_camera.h), 3 = DJI Osmo Action
+// 4 / 5 Pro / 6 and Osmo 360 (DJI R SDK, see dji_rsdk_camera.h).
 #define DEFAULT_CAMERA_TYPE       CAMERA_DJI_NANO
 
 // Zero-based index of the RC channel used as the "Record" switch.
@@ -199,6 +200,22 @@
 // Off now that the Action 2 is verified; set to 1 when bringing up another
 // Action model (3/4/5/6) to see what it sends.
 #define DJI_ACTION_FRAME_DISCOVERY  0
+
+// DJI R SDK cameras (dji_rsdk_camera.cpp): Osmo Action 4 / 5 Pro / 6, Osmo 360.
+// Values marked "DJI demo" are exactly what DJI's official Osmo GPS
+// Controller demo sends; change them only if a camera refuses them.
+#define DJI_RSDK_REMOTE_DEVICE_ID   0x12345678UL  // our device_id in the 0019 handshake (DJI demo)
+#define DJI_RSDK_CAMERA_DEVICE_ID   0x33FF0000UL  // device_id field of 1D03 record commands (DJI demo, OA4)
+// 0019 verify_mode: 0 = camera decides from its pairing history (prompt only
+// if it doesn't know us yet), 1 = always show the pairing prompt.
+#define DJI_RSDK_VERIFY_MODE        0
+#define DJI_RSDK_CONNECT_DELAY_MS   300    // GATT subscribed -> connection request
+// After the camera REJECTS pairing, don't auto-reconnect for this long (DJI:
+// don't re-ask a camera that said no). A user "Use"/pair click overrides it.
+#define DJI_RSDK_REJECT_BACKOFF_MS  60000
+// Bring-up aid: log the first frame of every distinct R SDK message type with
+// a hex dump. On until the Action 4 backend is hardware-verified.
+#define DJI_RSDK_FRAME_DISCOVERY    1
 
 // BLE connection timeout (milliseconds).
 #define BLE_CONNECT_TIMEOUT_MS    10000

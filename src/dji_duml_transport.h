@@ -47,6 +47,31 @@ extern const uint8_t DJI_DUML_XTRA_COMPANY[2];
 bool dumlBytesContain(const std::string &haystack, const uint8_t *needle);
 
 // ──────────────────────────────────────────────────────────────────────────────
+// Per-protocol link hooks. The GATT layer (service 0xFFF0, notify FFF4,
+// write FFF5), connect/reconnect policy, auth timeout and liveness watchdog
+// are shared by every DJI Osmo camera, but the protocol spoken on top is
+// not: the Nano / Action 2 speak DUML (0x55 frames, 07/45 PIN pairing), the
+// Action 4 / 5 Pro / 6 and Osmo 360 speak DJI's R SDK (0xAA frames, 0019
+// connection handshake). A backend that isn't DUML points
+// DjiDumlSession::hooks at one of these; any hook left nullptr (or no hooks
+// at all) keeps the original DUML behaviour, so the Nano and Action 2
+// backends are untouched.
+// ──────────────────────────────────────────────────────────────────────────────
+struct DjiDumlSession;
+struct DjiLinkHooks {
+    /// GATT connected + subscribed; replaces the DUML pairing arm.
+    void (*onLinkUp)(DjiDumlSession &s);
+    /// Every loop() tick while BLE_AUTHENTICATING; replaces the DUML PIN
+    /// send. The shared 30 s auth timeout still applies. The hook sets
+    /// s.sessionEstablished + s.bleState = BLE_CONNECTED when done.
+    void (*onAuthTick)(DjiDumlSession &s, uint32_t now);
+    /// Every BLE_KEEPALIVE_INTERVAL_MS once connected; replaces 00/F1.
+    void (*onKeepAlive)(DjiDumlSession &s);
+    /// Stale link with softRecoverOnStale set; replaces the PIN re-send.
+    void (*onSoftRecover)(DjiDumlSession &s);
+};
+
+// ──────────────────────────────────────────────────────────────────────────────
 // Session state — one instance per DJI backend (dji_action_camera.cpp and
 // dji_nano_camera.cpp each keep their own static DjiDumlSession). Only one
 // is ever driven per loop() tick (camera_manager dispatches to exactly one
@@ -88,6 +113,16 @@ struct DjiDumlSession {
     bool     softRecoverOnStale   = false;
     uint32_t softRecoverAtMs      = 0;  // 0 = no in-place recovery in progress
     uint32_t softRecoverCount     = 0;  // diagnostics: recoveries this session
+
+    // Protocol hooks (see DjiLinkHooks). nullptr = DUML (Nano / Action 2).
+    const DjiLinkHooks *hooks = nullptr;
+
+    // true = list ALL services (ATT Read By Group Type) before looking up
+    // 0xFFF0, instead of NimBLE's by-UUID lookup (ATT Find By Type Value).
+    // DJI's own remote demo and Android remotes do a full discovery; the
+    // Osmo Action 4 never answered the by-UUID request on the bench and
+    // hung up ~4.5 s later. false keeps the Nano / Action 2 path unchanged.
+    bool fullServiceDiscovery = false;
 
     // User-facing error from the last connect attempt. Empty = no error.
     char lastError[48] = "";

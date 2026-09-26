@@ -464,6 +464,17 @@ function fmtSeconds(total) {
   return `${m}:${String(r).padStart(2, "0")}`;
 }
 
+// Standby remaining-record-time, e.g. "5h40m" / "12m" / "45s" -- same
+// format as the Web UI's humanTime() (lowercase is fine here; only the OSD
+// needs the uppercase variant, see osd_slots.cpp's formatHuman()).
+function fmtHuman(total) {
+  const s = Math.max(0, total | 0);
+  if (s < 60) return `${s}s`;
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+  if (h > 0) return m > 0 ? `${h}h${m}m` : `${h}h`;
+  return `${m}m`;
+}
+
 function fmtUptime(total) {
   const s = Math.max(0, total | 0);
   const h = Math.floor(s / 3600);
@@ -485,7 +496,12 @@ function renderStatus(st) {
   $("stCamState").textContent = st.cam?.stateName ?? "—";
   $("stCamName").textContent = st.cam?.name || "(none)";
   $("stCamBatt").textContent = st.cam?.batt >= 0 ? `${st.cam.batt}%` : "—";
-  $("stRecTime").textContent = st.cam?.valid ? fmtSeconds(st.cam.recTime) : "—";
+  // recTime = elapsed while the camera records, remaining in standby.
+  // cam.recording is the camera's own state (older firmware: use rec.desired).
+  const camRec = typeof st.cam?.recording === "boolean" ? st.cam.recording : !!st.rec?.desired;
+  $("stRecTime").textContent = st.cam?.valid
+    ? (camRec ? fmtSeconds(st.cam.recTime) : `${fmtHuman(st.cam.recTime)} left`)
+    : "—";
   $("stDesired").textContent = st.rec?.desired ? "ON" : "off";
   $("stRcValue").textContent = st.rec ? `${st.rec.rcValue} us (ch ${st.rec.auxCh})` : "—";
   $("stFc").textContent = st.fc?.alive
@@ -551,8 +567,9 @@ function renderCameraLists(st) {
   }
 }
 
-// CameraType: 0 = DJI Osmo Nano, 1 = GoPro, 2 = DJI Osmo Action.
-const CAM_TYPE_NAMES = { 0: "DJI Osmo Nano", 1: "GoPro", 2: "DJI Osmo Action" };
+// CameraType: 0 = DJI Osmo Nano, 1 = GoPro, 2 = DJI Osmo Action (2),
+// 3 = DJI Osmo Action 4 / 5 Pro / 6 and Osmo 360 (R SDK backend).
+const CAM_TYPE_NAMES = { 0: "DJI Osmo Nano", 1: "GoPro", 2: "DJI Osmo Action", 3: "DJI Osmo Action 4+" };
 function camTypeName(t) { return CAM_TYPE_NAMES[t] || "DJI"; }
 // Numeric type of a scan result. Newer firmware sends "ty"; older firmware
 // only the display string "t", where anything but "GoPro" meant DJI (Nano).

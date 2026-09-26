@@ -49,7 +49,8 @@
 // ──────────────────────────────────────────────────────────────────────────────
 
 static bool cameraTypeValid(long t) {
-    return t == CAMERA_DJI_NANO || t == CAMERA_GOPRO || t == CAMERA_DJI_ACTION;
+    return t == CAMERA_DJI_NANO || t == CAMERA_GOPRO || t == CAMERA_DJI_ACTION ||
+           t == CAMERA_DJI_RSDK;
 }
 
 size_t apiBuildStatusJson(char *buf, size_t bufLen) {
@@ -135,7 +136,7 @@ size_t apiBuildStatusJson(char *buf, size_t bufLen) {
     size_t w = snprintf(buf, bufLen,
         "{\"heap\":%u,"
         "\"cam\":{\"type\":%d,\"name\":\"%s\",\"state\":%d,"
-        "\"stateName\":\"%s\",\"batt\":%d,\"recTime\":%u,\"valid\":%s,"
+        "\"stateName\":\"%s\",\"batt\":%d,\"recTime\":%u,\"valid\":%s,\"recording\":%s,"
         "\"model\":\"%s\"},"
         "\"rec\":{\"desired\":%s,\"switchOn\":%s,\"roa\":%s,\"sod\":%s,\"sodDelay\":%u,\"rcValue\":%u,"
         "\"auxCh\":%u,\"thr\":%u,\"deb\":%u},"
@@ -150,7 +151,13 @@ size_t apiBuildStatusJson(char *buf, size_t bufLen) {
         "\"sys\":{\"heap\":%u,\"uptime\":%lu,\"ip\":\"%s\",\"sta\":%d,\"version\":\"%s\"}}",
         heap,
         (int)cfg.camera, camGetName(), (int)st, kStateNames[st], batt,
-        tel.recTimeSeconds, tel.dataValid ? "true" : "false", tel.model,
+        tel.recTimeSeconds, tel.dataValid ? "true" : "false",
+        // The CAMERA's own recording state (every backend sets it), as
+        // opposed to rec.desired (what we asked for). recTime means elapsed
+        // while this is true and remaining while false, so the UIs format
+        // it from this rather than from rec.desired.
+        tel.state == CAM_STATE_RECORDING ? "true" : "false",
+        tel.model,
         recorderDesiredRecording() ? "true" : "false",
         recorderSwitchOn() ? "true" : "false",
         cfg.recordOnArm ? "true" : "false",

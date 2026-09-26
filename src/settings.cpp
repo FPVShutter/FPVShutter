@@ -35,7 +35,7 @@ static void applyDefaults() {
 void settingsLoad() {
     applyDefaults();
 
-    if (!_prefs.begin("shutterlink", false)) {
+    if (!_prefs.begin("fpvshutter", false)) {
         DBG("SETTINGS: NVS open failed — using defaults");
         return;
     }
@@ -86,7 +86,7 @@ void settingsLoad() {
 }
 
 void settingsSave() {
-    if (!_prefs.begin("shutterlink", false)) {
+    if (!_prefs.begin("fpvshutter", false)) {
         DBG("SETTINGS: NVS open failed — not saved");
         return;
     }
@@ -126,6 +126,7 @@ const char* cameraTypeName(CameraType type) {
     switch (type) {
         case CAMERA_GOPRO:      return "GoPro";
         case CAMERA_DJI_ACTION: return "DJI Osmo Action";
+        case CAMERA_DJI_RSDK:   return "DJI Osmo Action 4+";
         case CAMERA_DJI_NANO:
         default:                return "DJI Osmo Nano";
     }

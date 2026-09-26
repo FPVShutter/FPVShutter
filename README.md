@@ -2,7 +2,7 @@
 
 Open-source CamLink alternative based on [shutterlink](https://github.com/rover1312/shutterlink): an ESP32-C3 BLE bridge that turns a radio
 switch (or your arming switch!) into record control for **DJI Osmo Nano**,
-**DJI Osmo Action 2** and **GoPro HERO8+** cameras, and pushes live camera telemetry into the
+**DJI Osmo Action 2**, **DJI Osmo Action 4 / 5 Pro / 6** and **GoPro HERO8+** cameras, and pushes live camera telemetry into the
 Betaflight OSD - with a built-in **Glassmorphism Web UI**.
 
 > **Requires a Betaflight build with Custom Message OSD elements**
@@ -15,15 +15,18 @@ Betaflight OSD - with a built-in **Glassmorphism Web UI**.
 ---
 
 # CAMERA SUPPORT
-Upstream Shutterlink supports DJI and GoPro, so does my fork. The DJI side is split
-into two backends that share one DUML-over-BLE transport, because the Osmo Nano and
-the mainline Osmo Action line report their telemetry differently:
+Upstream Shutterlink supports DJI and GoPro, so does my fork. The DJI side has three
+backends on one shared BLE transport. The Osmo Nano and Action 2 speak DUML but report
+their telemetry differently. The Action 4 and newer speak DJI's official remote
+protocol (the "DJI R SDK" protocol from DJI's Osmo GPS Controller demo) instead:
 
 | Camera | Backend | Record control | Telemetry | Status |
 |---|---|---|---|---|
 | DJI Osmo Nano | `dji_nano_camera` | yes | battery %, rec state, elapsed / remaining time (camera pushes it) | **Tested on hardware** |
 | DJI Osmo Action 2 | `dji_action_camera` | yes | battery %, rec state, elapsed / remaining time (polled from the camera) | **Tested on hardware** |
-| DJI Osmo Action 3 / 4 / 5 Pro / 6 | `dji_action_camera` | possibly | unknown | Not tested |
+| DJI Osmo Action 4 | `dji_rsdk_camera` | yes | battery %, rec state, elapsed / remaining time, SD free space, mode / resolution / fps (camera pushes it) | **Tested on hardware** |
+| DJI Osmo Action 5 Pro / 6, Osmo 360 | `dji_rsdk_camera` | expected (same protocol as the Action 4) | expected | Not tested |
+| DJI Osmo Action 3 | `dji_action_camera` | possibly | unknown | Not tested |
 | GoPro HERO8-13 | `gopro_camera` | yes | battery %, encoding state | Upstream |
 
 Pairing and the record command are the same on the Nano and the Action 2. The
@@ -34,8 +37,17 @@ projects found (see Credits), then checked on a borrowed Action 2: pairing, star
 record state, battery, remaining time, and reconnecting after the camera is power
 cycled all work.
 
-Bringing up another Action model? Set `DJI_ACTION_FRAME_DISCOVERY` to 1 in `config.h`
-and the firmware logs every new kind of camera message once to the USB serial monitor.
+The Action 4 backend follows DJI's published protocol docs and was checked on a real
+Action 4 (firmware 03.04.80.15): pairing with on-screen approval, model detection,
+start/stop, the 2 Hz status push (recording state, the camera's own record time,
+remaining time, battery) and reconnecting after a power cycle all work. DJI documents
+the same protocol for the Action 5 Pro, Action 6 and Osmo 360, so they should work
+too, but nobody has tried them yet. Pick **Osmo Action 4/5/6** in the camera picker for
+these; the Action 2 picker won't work with them.
+
+Bringing up another Action model? Set `DJI_ACTION_FRAME_DISCOVERY` (Action 2 / DUML) or
+`DJI_RSDK_FRAME_DISCOVERY` (Action 4+) to 1 in `config.h` and the firmware logs every new
+kind of camera message once to the USB serial monitor.
 One test session's log is usually enough to see what that camera sends.
 
 ## Features
@@ -51,9 +63,10 @@ One test session's log is usually enough to see what that camera sends.
   Cam status / Rec time / Battery / Link state / FC battery / Arm state / Off
   to each slot via the Web UI. Pushed with `MSP2_SET_TEXT` (MSP v2, `0x3007`).
 
-- **Three camera backends** - DJI Osmo Nano and DJI Osmo Action 2 (DUML over
-  BLE) and GoPro HERO8 through HERO13 (official Open GoPro BLE API),
-  switchable at runtime.
+- **Four camera backends** - DJI Osmo Nano and DJI Osmo Action 2 (DUML over
+  BLE), DJI Osmo Action 4 / 5 Pro / 6 (DJI's official R SDK protocol over BLE)
+  and GoPro HERO8 through HERO13 (official Open GoPro BLE API), switchable at
+  runtime.
 
 - **RF-friendly radio options** - a master switch that keeps the Wi-Fi AP off
   entirely, and a Low / Medium / High Bluetooth power setting, for builds where
@@ -89,7 +102,8 @@ One test session's log is usually enough to see what that camera sends.
 - **Status LED patterns** - know your link state at a glance on the bench.
 
 - **Modular firmware** - `msp_protocol` (FC side), `fc_status` (arming),
-  `dji_nano_camera` / `dji_action_camera` on a shared `dji_duml_transport`,
+  `dji_nano_camera` / `dji_action_camera` / `dji_rsdk_camera` on a shared
+  `dji_duml_transport`,
   `gopro_camera` (camera side), `camera_manager` (dispatch),
   `cam_registry` + `scan_results` (pairing), `recorder` (decision engine),
   `osd_slots` (OSD), `wifiswitch` (AP power), `api_core` + `json_scan`
@@ -141,7 +155,7 @@ One test session's log is usually enough to see what that camera sends.
 |---|---|
 | **ESP32-C3** board | DevKitM-1 / "Super Mini" class. BLE 5.0, NimBLE stack. |
 | **Flight controller** | Betaflight with Custom Message OSD elements + one free UART. |
-| **Camera** | DJI Osmo Nano, DJI Osmo Action 2 **or** GoPro HERO8/9/10/11/12/13. |
+| **Camera** | DJI Osmo Nano, DJI Osmo Action 2, DJI Osmo Action 4 (5 Pro / 6 untested) **or** GoPro HERO8/9/10/11/12/13. |
 | Wiring | 4 wires: 5 V, GND, FC TX, FC RX. |
 
 > **ESP32-C3 "Super Mini" / native-USB boards:** these have no separate
@@ -240,10 +254,10 @@ above.
 
 2. In the Web UI open the **Camera** tab.
 
-3. Pick your camera model (**Osmo Nano**, **Osmo Action 2** or **GoPro
-   HERO8+**), then tap **Scan for Cameras**. A one-shot 5-second BLE scan
-   lists nearby cameras, strongest signal first. The model you pick decides
-   which backend drives the camera, so choose the right one. Nano and Action
+3. Pick your camera model (**Osmo Nano**, **Osmo Action 2**, **Osmo Action
+   4/5/6** or **GoPro HERO8+**), then tap **Scan for Cameras**. A one-shot
+   5-second BLE scan lists nearby cameras, strongest signal first. The model you
+   pick decides which backend drives the camera, so choose the right one. DJI
    cameras look alike over Bluetooth, so the scan can't tell them apart.
    - Camera not in the list? Tap **"Camera not listed? Show all nearby
      devices"** and pick yours by signal strength (hold it within 1 m -
@@ -312,7 +326,7 @@ opens automatically on most devices, otherwise browse to
 |---|---|
 | **Dashboard** | Live link/camera/FC status, big START / STOP buttons, live preview of the four OSD strings, camera battery, record-switch value, FC battery & arm state, heap/uptime. |
 | **Controls** | Record switch channel (CH5-16/AUX), ON threshold, debounce, **record-on-arm + stop-on-disarm toggles**, **Wi-Fi AP master switch**, Wi-Fi AP credentials, Wi-Fi radio switch channel, **Bluetooth power**. |
-| **Camera** | Active connection status, saved-camera registry (select/remove, up to 4), camera model picker (Nano / Action 2 / GoPro), discovery scan with **Pair & Save**, "show all nearby devices" fallback. |
+| **Camera** | Active connection status, saved-camera registry (select/remove, up to 4), camera model picker (Nano / Action 2 / Action 4/5/6 / GoPro), discovery scan with **Pair & Save**, "show all nearby devices" fallback. |
 | **OSD** | Assign content to Custom Message slots 1-4 with live previews. |
 | **FC / System** | Betaflight identity (API/firmware/board), battery, arm state, read-only **MSP console** (passthrough to your FC), free heap/uptime/firmware version, reboot, **OTA firmware update** (.bin upload). |
 
@@ -559,6 +573,30 @@ paired". Only if that gets no reply within 5 s does it fall back to a full recon
 first frame of every new message type from an Action camera as a hex dump on
 the USB serial monitor, for checking or correcting these offsets.
 
+### DJI Osmo Action 4 / 5 Pro / 6 (DJI R SDK over BLE)
+
+Same GATT service as the DUML cameras (`0xFFF0`: write `0xFFF5`, notify `0xFFF4`),
+different protocol on top: DJI's official remote protocol, documented in
+[dji-sdk/Osmo-GPS-Controller-Demo](https://github.com/dji-sdk/Osmo-GPS-Controller-Demo).
+Backend: `dji_rsdk_camera.cpp`, frame layer `dji_rsdk_protocol.cpp`.
+
+```
+[0xAA][u16 ver/len][cmdType][enc][res x3][u16 seq][u16 crc16]
+[cmdSet][cmdId][payload...][u32 crc32]      (little-endian; both CRCs seeded 0x3AA3)
+```
+
+| | Command | Notes |
+|---|---|---|
+| Connect | `00/19` both ways | We send a request, the camera shows an approve prompt if it doesn't know this ESP32 (`DJI_RSDK_VERIFY_MODE` 1 = always prompt), then sends its own `00/19` with the verdict and its model ID (`FF33` = Action 4) |
+| Status | `1D/05` subscribe, then `1D/02` pushed at 2 Hz and on every change | recording state, the camera's own record time, remaining time, SD free MB, battery %, mode / resolution / fps, overheat state |
+| Record | `1D/03` | payload `0` = **start**, `1` = stop (the opposite of DUML's `02/02`) |
+| Keep-alive | `00/00` version query every 15 s | the 2 Hz pushes keep the link busy anyway |
+
+The Action 4 only answers a full GATT service discovery, not NimBLE's by-UUID lookup,
+so this backend lists all services on connect. A camera that rejects pairing isn't
+asked again for 60 s. Host tests for the frame layer and a simulated camera run with
+`sh tools/rsdk_host_test/run.sh` (needs only `g++`).
+
 ### GoPro HERO8+ (Open GoPro BLE)
 
 Official public API: service `0xFEA6`, command characteristic
@@ -583,7 +621,7 @@ console). Compile-time defaults are in `src/config.h`:
 | Define | Default | Purpose |
 |---|---|---|
 | `FC_UART_RX_PIN` / `FC_UART_TX_PIN` | 5 / 4 | UART pins to the FC |
-| `DEFAULT_CAMERA_TYPE` | DJI Osmo Nano | Initial camera backend (0 Nano, 1 GoPro, 2 Action 2) |
+| `DEFAULT_CAMERA_TYPE` | DJI Osmo Nano | Initial camera backend (0 Nano, 1 GoPro, 2 Action 2, 3 Action 4+) |
 | `DEFAULT_AUX_CHANNEL_INDEX` | 4 | RC channel used as record switch |
 | `DEFAULT_RC_THRESHOLD_US` | 1800 | us above = ON |
 | `DEFAULT_RC_DEBOUNCE_MS` | 300 | Switch debounce |
@@ -596,6 +634,8 @@ console). Compile-time defaults are in `src/config.h`:
 | `DEFAULT_BLE_POWER` | High | Bluetooth TX power (Low / Medium / High) |
 | `DJI_ACTION_STATUS_POLL_MS` / `DJI_ACTION_BATTERY_POLL_MS` / `DJI_ACTION_REMAIN_POLL_MS` | 500 / 5000 / 3000 | Action 2 telemetry query intervals |
 | `DJI_ACTION_FRAME_DISCOVERY` | 0 | Log each new DUML message type from an Action camera once (bench aid) |
+| `DJI_RSDK_VERIFY_MODE` | 0 | Action 4+ pairing: 0 = camera prompts only if it doesn't know this ESP32, 1 = prompt every connect |
+| `DJI_RSDK_FRAME_DISCOVERY` | 1 | Log each new R SDK message type from an Action 4+ once (bench aid) |
 | `WIFI_AP_DEFAULT_SSID` / `_PASS` | FPVShutter / fpvshutter | Web UI hotspot |
 | `DEFAULT_OSD_SLOT_1..4` | status/time/batt/link | Custom Message contents |
 | `STATUS_LED_PIN` | 8 | Onboard LED |
@@ -624,6 +664,8 @@ FPVShutter/
     |                       #   connect, pairing, keep-alive, reconnect
     +-- dji_nano_camera.h/.cpp   # Osmo Nano backend (pushed telemetry)
     +-- dji_action_camera.h/.cpp # Osmo Action 2 backend (polled telemetry)
+    +-- dji_rsdk_camera.h/.cpp   # Osmo Action 4 / 5 Pro / 6 backend (DJI R SDK)
+    +-- dji_rsdk_protocol.h/.cpp # R SDK framing, CRCs, payload helpers
     +-- gopro_camera.h/.cpp # GoPro Open BLE backend
     +-- camera_manager.h/.cpp  # Backend dispatcher (runtime switching,
     |                          # user-initiated scans, reconnect kicks)
@@ -649,8 +691,8 @@ FPVShutter/
 | Endpoint | Purpose |
 |---|---|
 | `GET /api/status` | Live telemetry snapshot (JSON) |
-| `POST /api/settings` | Update + persist settings. Keys: `camera` (0 Nano, 1 GoPro, 2 Action 2), `auxChannel`, `threshold`, `debounce`, `recordOnArm`, `stopOnDisarm`, `stopOnDisarmDelay`, `scanAll`, `wifiSwitch`, `wifiApEnabled`, `blePower` (0-2), `slot0`-`slot3`, `ssid`, `pass` |
-| `POST /api/camera` | `{"scan":true}` \| `{"pair":{"mac":"MAC","type":0\|1\|2}}` \| `{"select":i}` \| `{"remove":i}` |
+| `POST /api/settings` | Update + persist settings. Keys: `camera` (0 Nano, 1 GoPro, 2 Action 2, 3 Action 4+), `auxChannel`, `threshold`, `debounce`, `recordOnArm`, `stopOnDisarm`, `stopOnDisarmDelay`, `scanAll`, `wifiSwitch`, `wifiApEnabled`, `blePower` (0-2), `slot0`-`slot3`, `ssid`, `pass` |
+| `POST /api/camera` | `{"scan":true}` \| `{"pair":{"mac":"MAC","type":0\|1\|2\|3}}` \| `{"select":i}` \| `{"remove":i}` |
 | `POST /api/command` | `{"cmd":"start"\|"stop"\|"reboot"}` |
 | `POST /api/msp` | Read-only allowlisted MSP passthrough |
 | `GET /api/scan` | Current scan results (`ty` = numeric camera type to pair with) |
@@ -664,8 +706,8 @@ See "Web Serial configurator" above for the USB equivalent of this surface.
   Normal dashboard usage is no problem.
 - GoPro telemetry depth depends on model firmware (battery %, encoding state;
   record timer is counted locally while encoding).
-- DJI telemetry is tested on the Osmo Nano and Osmo Action 2. Other Action
-  models (3/4/5 Pro/6) are untested.
+- DJI telemetry is tested on the Osmo Nano, Osmo Action 2 and Osmo Action 4.
+  The Action 3, Action 5 Pro, Action 6 and Osmo 360 are untested.
 - While a saved camera is switched off, each reconnect attempt can block the
   main loop for up to 10 s (`BLE_CONNECT_TIMEOUT_MS`), freezing OSD and switch
   updates for that time. Making the BLE connect non-blocking is on the roadmap.
@@ -687,6 +729,8 @@ See "Web Serial configurator" above for the USB equivalent of this surface.
 - [x] Full DJI telemetry parse (battery %, rec time from DUML notifications, Tested with Osmo Nano)
 - [x] Separate Osmo Nano / Osmo Action backends on a shared DUML transport
 - [x] Osmo Action 2 support (polled status, battery and remaining time, heartbeat, in-place session recovery) - tested on a borrowed Action 2
+- [x] Osmo Action 4 support via DJI's official R SDK protocol (pushed status, record time, battery, remaining time, model detection) - tested on an Action 4
+- [ ] Osmo Action 4+ Bluetooth wake-from-sleep (DJI's `WKP` advert) for arm-to-record
 - [ ] Non-blocking BLE connect (no loop stall while a saved camera is off)
 - [x] Wi-Fi AP master switch + Bluetooth TX power setting (Web UI + Configurator)
 - [x] OTA firmware flashing over Web Serial, including through Betaflight passthrough (app-level chunked upload into the spare OTA partition)
@@ -700,6 +744,7 @@ See "Web Serial configurator" above for the USB equivalent of this surface.
 - [o-gs/dji-firmware-tools](https://github.com/o-gs/dji-firmware-tools) - DUML Wireshark dissectors; `02/80` Camera State Info field layout, which `02/71` mirrors on the Action 2
 - [flosean/RotorREC](https://github.com/flosean/RotorREC) - Action 2 hardware results (polled `02/70` record state, `0D/02` battery); protocol facts only, no code used
 - [FLORIANSV35/controle-dji-action2](https://github.com/FLORIANSV35/controle-dji-action2) - independent ESP32-C3 Action 2 controller confirming the `02/70` status poll and `02/02` record command
+- [dji-sdk/Osmo-GPS-Controller-Demo](https://github.com/dji-sdk/Osmo-GPS-Controller-Demo) - DJI's official R SDK remote protocol for the Osmo Action 4 / 5 Pro / 6 and Osmo 360 (protocol docs under DJI's EULA; demo code MIT). The Action 4 backend is written from those docs; the host tests use DJI's example frames as test vectors
 - [gopro/OpenGoPro](https://github.com/gopro/OpenGoPro) - official Open GoPro BLE specification
 - [rhoenschrat/DJI-Remote](https://github.com/rhoenschrat/DJI-Remote) - multicam BLE remote reference
 - [Easy4Racing/bf_custom_osd_msg_example](https://github.com/Easy4Racing/bf_custom_osd_msg_example) - BF custom message reference

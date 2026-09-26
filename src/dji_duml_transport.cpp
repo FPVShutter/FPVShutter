@@ -268,13 +268,29 @@ bool dumlConnectToCamera(DjiDumlSession &s, CameraTelemetry &telemetry,
         return false;
     }
 
-    DBG("DUML: Connected! Discovering GATT services...");
+    DBG("DUML: Connected! Discovering GATT services%s...",
+        s.fullServiceDiscovery ? " (full discovery)" : "");
+    if (s.fullServiceDiscovery) {
+        // Fills the client's service cache, so getService() below is a
+        // lookup in that cache with no further request to the camera.
+        std::vector<NimBLERemoteService *> *svcs = s.pClient->getServices(true);
+        DBG("DUML: %u services found", svcs ? (unsigned)svcs->size() : 0u);
+        if (svcs) {
+            for (NimBLERemoteService *sv : *svcs) {
+                DBG("DUML:   service %s", sv->getUUID().toString().c_str());
+            }
+        }
+    }
     NimBLERemoteService *pService = s.pClient->getService(DJI_DUML_SERVICE_UUID);
     if (!pService) {
-        DBG("DUML: Service 0xFFF0 not found! Disconnecting.");
-        s.pClient->disconnect();
+        // Tell "camera hung up mid-discovery" apart from "connected fine but
+        // it really has no 0xFFF0" — the first is not a wrong-camera case.
+        const bool dropped = !s.pClient->isConnected();
+        DBG("DUML: Service 0xFFF0 not found%s. Disconnecting.",
+            dropped ? " (camera dropped the link during discovery)" : "");
+        if (!dropped) s.pClient->disconnect();
         s.bleState = BLE_DISCONNECTED;
-        s.setError("not a DJI Osmo camera");
+        s.setError(dropped ? "camera dropped the connection" : "not a DJI Osmo camera");
         return false;
     }
 
@@ -308,7 +324,8 @@ bool dumlConnectToCamera(DjiDumlSession &s, CameraTelemetry &telemetry,
     s.sessionEstablished = false;
     s.authStartMs = millis();  // Fresh timeout — lastReconnectAttempt is stale
                                 // when we got here via direct connect (switching)
-    dumlSendPairingArm(s);
+    if (s.hooks && s.hooks->onLinkUp) s.hooks->onLinkUp(s);
+    else                              dumlSendPairingArm(s);
     return true;
 }
 
@@ -369,8 +386,11 @@ void dumlUpdate(DjiDumlSession &s, CameraTelemetry &telemetry, CameraType camTyp
             break;
 
         case BLE_AUTHENTICATING:
-            // Wait 200ms after arming, then send the PIN packet.
-            if (now - s.pairingArmedTime >= 200 && s.pairingArmedTime > 0) {
+            if (s.hooks && s.hooks->onAuthTick) {
+                // Non-DUML handshake (R SDK): the backend drives it.
+                s.hooks->onAuthTick(s, now);
+            } else if (now - s.pairingArmedTime >= 200 && s.pairingArmedTime > 0) {
+                // DUML: wait 200ms after arming, then send the PIN packet.
                 s.pairingArmedTime = 0;  // Only send once
                 dumlSendPairingPin(s);
             }
@@ -406,7 +426,7 @@ void dumlUpdate(DjiDumlSession &s, CameraTelemetry &telemetry, CameraType camTyp
 
             if (s.softRecoverAtMs != 0 && (int32_t)(lastRx - s.softRecoverAtMs) >= 0) {
                 // Camera answered after the in-place re-auth: recovered.
-                DBG("DUML: camera responding again after in-place re-auth (%lu this session)",
+                DBG("DUML: camera responding again after in-place recovery (%lu this session)",
                     (unsigned long)s.softRecoverCount);
                 s.softRecoverAtMs = 0;
             }
@@ -415,10 +435,11 @@ void dumlUpdate(DjiDumlSession &s, CameraTelemetry &telemetry, CameraType camTyp
                     s.softRecoverCount++;
                     s.softRecoverAtMs = now;
                     DBG("DUML: No camera traffic for %lu s but BLE link up — "
-                        "re-sending pairing PIN in place (attempt %lu)",
+                        "trying in-place recovery (attempt %lu)",
                         (unsigned long)(rxAgeMs / 1000),
                         (unsigned long)s.softRecoverCount);
-                    dumlSendPairingPin(s);
+                    if (s.hooks && s.hooks->onSoftRecover) s.hooks->onSoftRecover(s);
+                    else                                   dumlSendPairingPin(s);
                     break;
                 }
                 if (s.softRecoverAtMs != 0 &&
@@ -427,7 +448,7 @@ void dumlUpdate(DjiDumlSession &s, CameraTelemetry &telemetry, CameraType camTyp
                 }
                 DBG("DUML: No camera traffic for %lu s%s — forcing reconnect",
                     (unsigned long)(rxAgeMs / 1000),
-                    s.softRecoverAtMs ? " (in-place re-auth got no reply)" : "");
+                    s.softRecoverAtMs ? " (in-place recovery got no reply)" : "");
                 s.softRecoverAtMs = 0;
                 s.pClient->disconnect();
                 s.bleState = BLE_DISCONNECTED;
@@ -435,7 +456,8 @@ void dumlUpdate(DjiDumlSession &s, CameraTelemetry &telemetry, CameraType camTyp
             }
             if (now - s.lastKeepAlive >= BLE_KEEPALIVE_INTERVAL_MS) {
                 s.lastKeepAlive = now;
-                dumlSendKeepAlive(s);
+                if (s.hooks && s.hooks->onKeepAlive) s.hooks->onKeepAlive(s);
+                else                                 dumlSendKeepAlive(s);
             }
             break;
     }
