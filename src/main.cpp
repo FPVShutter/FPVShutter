@@ -171,7 +171,7 @@ void setup() {
     delay(1000);  // Allow USB CDC to enumerate
 
     DBG("============================================");
-    DBG("  ESP32-C3 FPVShutter v2.3");
+    DBG("  ESP32-C3 FPVShutter v2.4");
     DBG("  Betaflight <-> DJI Osmo / GoPro bridge");
     DBG("============================================");
 
