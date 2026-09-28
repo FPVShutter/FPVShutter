@@ -100,6 +100,7 @@
       <div class="stat"><span class="label">Camera</span><span class="value" id="stCamName">—</span></div>
       <div class="stat"><span class="label">Battery</span><span class="value" id="stCamBatt">—</span></div>
       <div class="stat"><span class="label">Rec time</span><span class="value" id="stRecTime">—</span></div>
+      <div class="stat"><span class="label">Video</span><span class="value" id="stVideo">—</span></div>
       <div class="stat"><span class="label">Recording</span><span class="value" id="stDesired">—</span></div>
       <div class="stat"><span class="label">RC switch</span><span class="value" id="stRcValue">—</span></div>
       <div class="stat"><span class="label">FC</span><span class="value" id="stFc">—</span></div>
@@ -170,14 +171,23 @@
   <!-- OSD -->
   <section class="card">
     <h2>OSD custom messages</h2>
+    <label class="osd-src">Preview with
+      <select id="osdSrc"><option value="live">Live camera &amp; FC data</option></select>
+    </label>
     <div id="osdSlots" class="osd-slots"></div>
-    <button id="btnSaveOsd" class="btn">Save OSD slots</button>
+    <div class="row">
+      <button id="btnSaveOsd" class="btn">Save OSD slots</button>
+      <button id="btnRevertOsd" class="btn">Discard changes</button>
+    </div>
     <p class="hint">
-      Live preview renders each message through the real Betaflight OSD font,
-      not just plain text. Notice lowercase letters look wrong (or turn into
-      little icons) &mdash; that's a real font limitation, not a bug in this
-      page, which is why FPVShutter's own duration text (e.g. "2H33M") is
-      uppercase-only.
+      Each Custom Message is an optional label plus up to four elements, joined
+      with spaces; an element that doesn't fit the 16 characters whole is
+      dropped. The preview is rendered here in the browser as you edit (before
+      saving), through the real Betaflight OSD font &mdash; pick a sample state
+      above to see how a layout looks recording, in standby, overheating or with
+      the camera off. Elements marked <b>n/a</b> aren't reported by the selected
+      camera and will show <code>--</code>. Labels are forced to uppercase: the
+      OSD font has no real lowercase letters (those tiles are icons).
     </p>
   </section>
 
@@ -279,6 +289,7 @@
 </footer>
 
 <script src="assets/site.js"></script>
+<script src="osd-format.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

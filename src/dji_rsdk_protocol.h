@@ -162,7 +162,16 @@ bool rsdkParseCameraStatus(const uint8_t *p, size_t n, RsdkCameraStatus &out);
 /// checked, since DJI's own demo writes the 0xFF33 id both ways round).
 const char *rsdkModelName(uint32_t deviceId);
 
-/// Frame-rate index → fps (0 if unknown), for logs / future OSD use.
+/// Frame-rate index → fps (0 if unknown), for logs and the OSD FPS element.
 uint16_t rsdkFpsFromIdx(uint8_t idx);
+
+// OSD-safe (UPPERCASE, short) labels for the 1D02 enums. Values from DJI's
+// Osmo-GPS-Controller-Demo logic/enums_logic.h. Each returns "" when the
+// value isn't in DJI's published table, so the OSD shows a placeholder
+// instead of a guess.
+const char *rsdkModeLabel(uint8_t cameraMode);        // "VIDEO", "SLOMO", "HLAPSE"...
+const char *rsdkResolutionLabel(uint8_t res);         // "4K", "2.7K", "1080P"
+const char *rsdkAspectLabel(uint8_t res);             // "16:9", "4:3", "9:16"
+const char *rsdkEisLabel(uint8_t eis);                // "RS", "HS", "RS+", "HB", "OFF"
 
 #endif // DJI_RSDK_PROTOCOL_H

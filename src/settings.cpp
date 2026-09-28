@@ -25,8 +25,10 @@ static void applyDefaults() {
     strlcpy(_s.apSsid, WIFI_AP_DEFAULT_SSID, sizeof(_s.apSsid));
     strlcpy(_s.apPass, WIFI_AP_DEFAULT_PASS, sizeof(_s.apPass));
 
+    static const uint8_t kDefaultSlots[4] =
+        { DEFAULT_OSD_SLOT_1, DEFAULT_OSD_SLOT_2, DEFAULT_OSD_SLOT_3, DEFAULT_OSD_SLOT_4 };
     for (int i = 0; i < 4; i++) {
-        _s.osdSlot[i] = DEFAULT_OSD_SLOT_1 + i;
+        osdSlotFromLegacy(kDefaultSlots[i], _s.osd[i]);
     }
     _s.camCount = 0;
     memset(_s.cams, 0, sizeof(_s.cams));
@@ -57,11 +59,30 @@ void settingsLoad() {
     buf[0] = 0;
     if (_prefs.getString("apkey", buf, sizeof(buf)) > 0) strlcpy(_s.apPass, buf, sizeof(_s.apPass));
 
+    // OSD layout: "osdN" = element bytes, "osdlN" = label. Firmware <= v2.3
+    // stored one OsdSlotContent byte as "slotN" instead — migrate that the
+    // first time (the old key is left in place, so a downgrade still works).
     for (int i = 0; i < 4; i++) {
-        char key[8];
-        snprintf(key, sizeof(key), "slot%d", i);
-        uint8_t v = _prefs.getUChar(key, _s.osdSlot[i]);
-        if (v < OSD_SLOT_COUNT) _s.osdSlot[i] = v;
+        char key[8], lkey[8];
+        snprintf(key,  sizeof(key),  "osd%d",  i);
+        snprintf(lkey, sizeof(lkey), "osdl%d", i);
+        if (_prefs.isKey(key)) {
+            uint8_t el[OSD_ELEMS_PER_SLOT] = {0};
+            _prefs.getBytes(key, el, sizeof(el));
+            for (int e = 0; e < OSD_ELEMS_PER_SLOT; e++) {
+                _s.osd[i].elem[e] = el[e] < OSD_EL_COUNT ? el[e] : OSD_EL_NONE;
+            }
+            _s.osd[i].label[0] = '\0';
+            _prefs.getString(lkey, _s.osd[i].label, sizeof(_s.osd[i].label));
+            osdSanitizeLabel(_s.osd[i].label);
+        } else {
+            char legacyKey[8];
+            snprintf(legacyKey, sizeof(legacyKey), "slot%d", i);
+            if (_prefs.isKey(legacyKey)) {
+                uint8_t v = _prefs.getUChar(legacyKey, OSD_SLOT_OFF);
+                if (v < OSD_SLOT_COUNT) osdSlotFromLegacy(v, _s.osd[i]);
+            }
+        }
     }
 
     // Sanity clamps
@@ -105,9 +126,11 @@ void settingsSave() {
     _prefs.putString("apkey", _s.apPass);
 
     for (int i = 0; i < 4; i++) {
-        char key[8];
-        snprintf(key, sizeof(key), "slot%d", i);
-        _prefs.putUChar(key, _s.osdSlot[i]);
+        char key[8], lkey[8];
+        snprintf(key,  sizeof(key),  "osd%d",  i);
+        snprintf(lkey, sizeof(lkey), "osdl%d", i);
+        _prefs.putBytes(key, _s.osd[i].elem, OSD_ELEMS_PER_SLOT);
+        _prefs.putString(lkey, _s.osd[i].label);
     }
 
     _prefs.end();

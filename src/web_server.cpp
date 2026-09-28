@@ -48,7 +48,7 @@ static void handleRoot() {
 }
 
 static void handleStatus() {
-    static char buf[2200];
+    static char buf[3072];
     apiBuildStatusJson(buf, sizeof(buf));
     _server.sendHeader("Cache-Control", "no-store");
     _server.send(200, "application/json", buf);

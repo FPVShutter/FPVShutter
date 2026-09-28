@@ -215,34 +215,8 @@ static bool isDjiActionDevice(NimBLEAdvertisedDevice *device) {
 // ──────────────────────────────────────────────────────────────────────────────
 // Bench aid: first-seen inbound frame logger
 // ──────────────────────────────────────────────────────────────────────────────
-#if DJI_ACTION_FRAME_DISCOVERY
-static uint32_t _seenFrameKeys[32];
-static uint8_t  _seenFrameCount = 0;
-
-/// Logs the first frame of every distinct (flags, set, id, sender) combo
-/// with a hex dump. Called from the NimBLE host task — only a small table
-/// scan + DBG, same weight as the per-frame logging the original
-/// dji_camera.cpp already did in this callback.
-static void logFirstSeenFrame(const char *charName, const uint8_t *pData,
-                               size_t length, const DumlFrameHeader &hdr) {
-    uint32_t key = ((uint32_t)hdr.flags << 24) | ((uint32_t)hdr.cmdSet << 16) |
-                   ((uint32_t)hdr.cmdId << 8) | pData[4];
-    for (uint8_t i = 0; i < _seenFrameCount; i++) {
-        if (_seenFrameKeys[i] == key) return;
-    }
-    if (_seenFrameCount >= sizeof(_seenFrameKeys) / sizeof(_seenFrameKeys[0])) return;
-    _seenFrameKeys[_seenFrameCount++] = key;
-
-    char hexBuf[3 * 48 + 1] = "";
-    size_t hexLen = 0;
-    for (size_t i = 0; i < length && i < 48; i++) {
-        hexLen += snprintf(hexBuf + hexLen, sizeof(hexBuf) - hexLen, "%02X ", pData[i]);
-    }
-    DBG("ACTION: new frame [%s] %02X->%02X flags=%02X set=%02X id=%02X len=%u: %s%s",
-        charName, pData[4], pData[5], hdr.flags, hdr.cmdSet, hdr.cmdId,
-        (unsigned)length, hexBuf, length > 48 ? "..." : "");
-}
-#endif
+// Shared with the Nano backend now — see dumlFrameLog() in dji_duml_transport.
+static DumlFrameLog _frameLog;
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Telemetry helpers
@@ -306,9 +280,7 @@ static void notifyCallback(NimBLERemoteCharacteristic *pChar, uint8_t *pData,
         return;
     }
 
-#if DJI_ACTION_FRAME_DISCOVERY
-    logFirstSeenFrame(charName, pData, length, hdr);
-#endif
+    dumlFrameLog(_frameLog, DJI_ACTION_FRAME_DISCOVERY, "ACTION", charName, pData, length, hdr);
 
     if (dumlHandlePairingFrame(_session, hdr, pData, length)) return;
 
@@ -398,6 +370,7 @@ static void notifyCallback(NimBLERemoteCharacteristic *pChar, uint8_t *pData,
             _remainingSec   = rem;
             _remainingKnown = true;
             _telemetry.storageRaw = freeMb > 0xFFFF ? 0xFFFF : (uint16_t)freeMb;
+            _telemetry.freeMb     = freeMb;   // bench-verified against the camera screen
             if (_telemetry.state != CAM_STATE_RECORDING) {
                 _telemetry.recTimeSeconds = _remainingSec;
             }
@@ -414,6 +387,9 @@ static void notifyCallback(NimBLERemoteCharacteristic *pChar, uint8_t *pData,
     if (hdr.flags == 0x00 && hdr.cmdSet == 0x02 && hdr.cmdId == 0x80 && length >= 30) {
         _telemetry.captureMode = pData[15];
         _telemetry.storageRaw  = pData[20] | (pData[21] << 8);
+        // Camera work mode (dji-firmware-tools: 0 photo, 1 record).
+        strlcpy(_telemetry.modeLabel, pData[15] == 0x01 ? "VIDEO" : pData[15] == 0x00 ? "PHOTO" : "",
+                sizeof(_telemetry.modeLabel));
 
         if (!_polledStatusSeen) {
             uint8_t recByte = pData[11];
@@ -440,9 +416,7 @@ void djiActionInit() {
     _session.softRecoverOnStale = true;
     _telemetry = CameraTelemetry();
     resetSessionTelemetry();
-#if DJI_ACTION_FRAME_DISCOVERY
-    _seenFrameCount = 0;
-#endif
+    dumlFrameLogReset(_frameLog);
 }
 
 void djiActionUpdate() {

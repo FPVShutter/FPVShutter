@@ -415,6 +415,16 @@ static void applyStatus(const RsdkCameraStatus &st) {
     _telemetry.captureMode = (st.cameraMode == 0x05) ? 0 : 1;   // 0x05 = photo
     _telemetry.storageRaw  = st.remainCapacityMb > 0xFFFF ? 0xFFFF
                                                           : (uint16_t)st.remainCapacityMb;
+    // Video format + health for the OSD elements. A mode outside DJI's
+    // table keeps the label from the last 1D06 push (see onFrame()).
+    const char *ml = rsdkModeLabel(st.cameraMode);
+    if (ml[0]) strlcpy(_telemetry.modeLabel, ml, sizeof(_telemetry.modeLabel));
+    strlcpy(_telemetry.resLabel,    rsdkResolutionLabel(st.videoResolution), sizeof(_telemetry.resLabel));
+    strlcpy(_telemetry.aspectLabel, rsdkAspectLabel(st.videoResolution),     sizeof(_telemetry.aspectLabel));
+    strlcpy(_telemetry.eisLabel,    rsdkEisLabel(st.eisMode),                sizeof(_telemetry.eisLabel));
+    _telemetry.fps       = rsdkFpsFromIdx(st.fpsIdx);
+    _telemetry.tempState = st.tempOver <= 3 ? st.tempOver : 0;
+    _telemetry.freeMb    = st.remainCapacityMb;
     _telemetry.dataValid   = true;
 }
 
@@ -475,6 +485,20 @@ static void onFrame(const RsdkFrame &f, void *) {
                 if (strcmp(name, _lastModeName) != 0) {
                     strlcpy(_lastModeName, name, sizeof(_lastModeName));
                     DBG("RSDK: camera mode \"%s\" %s", name, param);
+                }
+                // Modes outside DJI's 1D02 table are only named here. Use
+                // the name (uppercased, first word, OSD-safe) as the mode
+                // label so the OSD MODE element still says something useful.
+                if (!_lastValid || !rsdkModeLabel(_last.cameraMode)[0]) {
+                    char lbl[sizeof(_telemetry.modeLabel)];
+                    size_t o = 0;
+                    for (size_t i = 0; name[i] && name[i] != ' ' && o < sizeof(lbl) - 1; i++) {
+                        char c = name[i];
+                        if (c >= 'a' && c <= 'z') c -= 32;
+                        if ((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) lbl[o++] = c;
+                    }
+                    lbl[o] = '\0';
+                    if (o) strlcpy(_telemetry.modeLabel, lbl, sizeof(_telemetry.modeLabel));
                 }
             }
             break;

@@ -1,8 +1,8 @@
 // ============================================================================
 // osd_slots.cpp — Betaflight Custom Message 1..4 content manager
 // ============================================================================
-// Slot content options (OsdSlotContent in settings.h):
-//   OFF / CAM_STATUS / REC_TIME / BATTERY / LINK / FC_BATT / ARM_STATE
+// Each slot is an optional label plus up to OSD_ELEMS_PER_SLOT elements
+// (OsdElement in settings.h), rendered by osd_format.cpp.
 //
 // Betaflight limits each custom message to 16 characters (MAX_NAME_LENGTH),
 // same as pilot/craft name.
@@ -15,6 +15,7 @@
 #include "fc_status.h"
 #include "recorder.h"
 #include "msp_protocol.h"
+#include "osd_format.h"
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Internal state
@@ -23,130 +24,6 @@
 static uint32_t _lastPush        = 0;
 static char     _lastSent[4][OSD_MAX_TEXT_LEN + 1] = {"", "", "", ""};
 static bool     _firstRun        = true;
-
-// ──────────────────────────────────────────────────────────────────────────────
-// Content formatters
-// ──────────────────────────────────────────────────────────────────────────────
-
-static void formatMmSs(uint16_t seconds, char *out, size_t len) {
-    snprintf(out, len, "%02u:%02u", seconds / 60, seconds % 60);
-}
-/// Human-readable duration for goggle OSD glances — "45S" / "12M" / "2H" / "2H33M".
-/// Uppercase on purpose: most Betaflight/analog OSD fonts don't have real
-/// lowercase glyphs -- the a-o range is repurposed for heading/compass icons
-/// and p-z for unit/status icons, so a lowercase "h"/"m"/"s" here renders as
-/// the wrong icon on real hardware instead of the letter. See the Bench
-/// Console's OSD live preview for a visual of exactly this.
-static void formatHuman(uint16_t seconds, char *out, size_t len) {
-    if (seconds < 60) { snprintf(out, len, "%uS", seconds); return; }
-    uint16_t h = seconds / 3600;
-    uint16_t m = (seconds % 3600) / 60;
-    if (h > 0) {
-        if (m > 0) snprintf(out, len, "%uH%uM", h, m);
-        else       snprintf(out, len, "%uH", h);
-    } else {
-        snprintf(out, len, "%uM", m);
-    }
-}
-
-/// Build the string for one slot into `buf` (max OSD_MAX_TEXT_LEN chars).
-static void buildSlotString(uint8_t content, char *buf, size_t bufLen) {
-    const CameraTelemetry &tel = camGetTelemetry();
-    const FcTelemetry &fc = fcGetTelemetry();
-
-    switch (content) {
-
-        case OSD_SLOT_CAM_STATUS: {
-            if (camGetState() == BLE_DISCONNECTED ||
-                camGetState() == BLE_SCANNING) {
-                snprintf(buf, bufLen, "%s",
-                         camGetState() == BLE_SCANNING ? "CAM SCAN" : "CAM OFF");
-            } else if (!tel.dataValid && camGetState() != BLE_CONNECTED) {
-                snprintf(buf, bufLen, "CAM PAIR");
-            } else {
-                uint16_t t = tel.recTimeSeconds;
-                switch (tel.state) {
-                    case CAM_STATE_RECORDING:
-                        if (tel.batteryPercent <= 100) {
-                            snprintf(buf, bufLen, "REC %u%% %02u:%02u",
-                                     tel.batteryPercent, t / 60, t % 60);
-                        } else {
-                            formatMmSs(t, buf, bufLen);
-                            snprintf(buf, bufLen, "REC %s", buf);
-                        }
-                        break;
-                    case CAM_STATE_STANDBY:
-                        if (tel.batteryPercent <= 100) {
-                            snprintf(buf, bufLen, "STBY %u%%", tel.batteryPercent);
-                        } else {
-                            snprintf(buf, bufLen, "STBY");
-                        }
-                        break;
-                    default:
-                        snprintf(buf, bufLen, "CAM ???");
-                        break;
-                }
-            }
-            break;
-        }
-
-        case OSD_SLOT_REC_TIME: {
-            if (!camIsReady()) { snprintf(buf, bufLen, "REC --:--"); break; }
-            uint16_t t = tel.recTimeSeconds;
-            if (tel.state == CAM_STATE_RECORDING) {
-                // Recording: live elapsed MM:SS, matches the CAM_STATUS slot.
-                snprintf(buf, bufLen, "REC %02u:%02u", t / 60, t % 60);
-            } else {
-                // Standby: human-readable remaining estimate for a quick glance.
-                char h[8];
-                formatHuman(t, h, sizeof(h));
-                snprintf(buf, bufLen, "REC %s", h);
-            }
-            break;
-        }
-
-        case OSD_SLOT_BATTERY: {
-            if (tel.dataValid && tel.batteryPercent <= 100) {
-                snprintf(buf, bufLen, "BAT %u%%", tel.batteryPercent);
-            } else {
-                snprintf(buf, bufLen, "BAT --");
-            }
-            break;
-        }
-
-        case OSD_SLOT_LINK: {
-            switch (camGetState()) {
-                case BLE_CONNECTED:     snprintf(buf, bufLen, "LINK READY"); break;
-                case BLE_AUTHENTICATING:snprintf(buf, bufLen, "LINK PAIR"); break;
-                case BLE_CONNECTING:    snprintf(buf, bufLen, "LINK CONN"); break;
-                case BLE_SCANNING:      snprintf(buf, bufLen, "LINK SCAN"); break;
-                default:                snprintf(buf, bufLen, "LINK OFF"); break;
-            }
-            break;
-        }
-
-        case OSD_SLOT_FC_BATT: {
-            if (fc.vbat10 > 0) {
-                snprintf(buf, bufLen, "FC %2u.%1uV", fc.vbat10 / 10, fc.vbat10 % 10);
-            } else {
-                snprintf(buf, bufLen, "FC --.-V");
-            }
-            break;
-        }
-
-        case OSD_SLOT_ARM_STATE: {
-            if (!fc.fcAlive)     snprintf(buf, bufLen, "FC NOLINK");
-            else if (fc.armed)   snprintf(buf, bufLen, "ARMED");
-            else                 snprintf(buf, bufLen, "DISARMED");
-            break;
-        }
-
-        case OSD_SLOT_OFF:
-        default:
-            buf[0] = '\0';
-            break;
-    }
-}
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Public API
@@ -169,11 +46,20 @@ void osdSlotsUpdate() {
     _lastPush = now;
 
     const ShutterSettings &cfg = settingsGet();
+    const FcTelemetry &fc = fcGetTelemetry();
+
+    OsdContext ctx;
+    ctx.link     = camGetState();
+    ctx.camReady = camIsReady();
+    ctx.tel      = &camGetTelemetry();
+    ctx.fcAlive  = fc.fcAlive;
+    ctx.armed    = fc.armed;
+    ctx.vbat10   = fc.vbat10;
 
     for (uint8_t slot = 0; slot < 4; slot++) {
         // Only push a slot when its text actually changed.
         char buf[OSD_MAX_TEXT_LEN + 1];
-        buildSlotString(cfg.osdSlot[slot], buf, sizeof(buf));
+        osdFormatSlot(cfg.osd[slot], ctx, buf, sizeof(buf));
 
         if (forcePush || strcmp(buf, _lastSent[slot]) != 0) {
             strlcpy(_lastSent[slot], buf, sizeof(_lastSent[slot]));

@@ -38,6 +38,7 @@
 #include "fc_status.h"
 #include "recorder.h"
 #include "osd_slots.h"
+#include "osd_format.h"
 #include "cam_registry.h"
 #include "scan_results.h"
 #include "json_scan.h"
@@ -131,16 +132,34 @@ size_t apiBuildStatusJson(char *buf, size_t bufLen) {
         safeErr[i] = '\0';
     }
 
+    // OSD layout: [{"e":[1,3,2,0],"l":"CAM"},...]. Labels are sanitized on
+    // the way in (osdSanitizeLabel: no quotes/backslashes), so no escaping.
+    char osdCfg[4 * (24 + OSD_LABEL_MAX_LEN) + 4];
+    {
+        size_t o = 0;
+        o += snprintf(osdCfg + o, sizeof(osdCfg) - o, "[");
+        for (uint8_t i = 0; i < 4 && o < sizeof(osdCfg); i++) {
+            const OsdSlotConfig &sc = cfg.osd[i];
+            o += snprintf(osdCfg + o, sizeof(osdCfg) - o, "%s{\"e\":[%u,%u,%u,%u],\"l\":\"%s\"}",
+                          i ? "," : "", sc.elem[0], sc.elem[1], sc.elem[2], sc.elem[3], sc.label);
+        }
+        if (o < sizeof(osdCfg)) snprintf(osdCfg + o, sizeof(osdCfg) - o, "]");
+    }
+
+    // Optional video-format telemetry ("" / -1 / 0 = not reported).
+    long freeMb = tel.freeMb == CAM_FREE_MB_UNKNOWN ? -1L : (long)tel.freeMb;
+
     uint32_t heap = ESP.getFreeHeap();
 
     size_t w = snprintf(buf, bufLen,
         "{\"heap\":%u,"
         "\"cam\":{\"type\":%d,\"name\":\"%s\",\"state\":%d,"
-        "\"stateName\":\"%s\",\"batt\":%d,\"recTime\":%u,\"valid\":%s,\"recording\":%s,"
-        "\"model\":\"%s\"},"
+        "\"stateName\":\"%s\",\"batt\":%d,\"recTime\":%u,\"valid\":%s,\"recording\":%s,\"ready\":%s,\"cst\":%u,"
+        "\"model\":\"%s\",\"mode\":\"%s\",\"res\":\"%s\",\"ar\":\"%s\",\"fps\":%u,"
+        "\"eis\":\"%s\",\"temp\":%u,\"freeMb\":%ld},"
         "\"rec\":{\"desired\":%s,\"switchOn\":%s,\"roa\":%s,\"sod\":%s,\"sodDelay\":%u,\"rcValue\":%u,"
         "\"auxCh\":%u,\"thr\":%u,\"deb\":%u},"
-        "\"slots\":[%d,%d,%d,%d],"
+        "\"osdCfg\":%s,\"osdSup\":%lu,"
         "\"osd\":[\"%s\",\"%s\",\"%s\",\"%s\"],"
         "\"wifiSwitch\":%d,\"wifiOn\":%s,\"wifiApEnabled\":%s,"
         "\"blePower\":%d,\"blePowerName\":\"%s\",\"scanAll\":%s,"
@@ -157,7 +176,9 @@ size_t apiBuildStatusJson(char *buf, size_t bufLen) {
         // while this is true and remaining while false, so the UIs format
         // it from this rather than from rec.desired.
         tel.state == CAM_STATE_RECORDING ? "true" : "false",
-        tel.model,
+        camIsReady() ? "true" : "false", (unsigned)tel.state,
+        tel.model, tel.modeLabel, tel.resLabel, tel.aspectLabel, tel.fps,
+        tel.eisLabel, tel.tempState, freeMb,
         recorderDesiredRecording() ? "true" : "false",
         recorderSwitchOn() ? "true" : "false",
         cfg.recordOnArm ? "true" : "false",
@@ -165,7 +186,7 @@ size_t apiBuildStatusJson(char *buf, size_t bufLen) {
         cfg.stopOnDisarmDelayMs,
         recorderLastRcValue(),
         cfg.auxChannelIndex, cfg.rcThresholdUs, cfg.debounceMs,
-        cfg.osdSlot[0], cfg.osdSlot[1], cfg.osdSlot[2], cfg.osdSlot[3],
+        osdCfg, (unsigned long)osdElementSupportMask(cfg.camera),
         osdSlotText(0), osdSlotText(1), osdSlotText(2), osdSlotText(3),
         (cfg.wifiSwitchCh <= 15) ? (int)cfg.wifiSwitchCh : -1,
         webIsUp() ? "true" : "false",
@@ -197,6 +218,10 @@ bool apiApplySettings(const String &body, bool &apNeedsRestart, bool &apShouldSt
         !jsonHas(body, "recordOnArm") && !jsonHas(body, "ssid") &&
         !jsonHas(body, "slot0") && !jsonHas(body, "slot1") &&
         !jsonHas(body, "slot2") && !jsonHas(body, "slot3") &&
+        !jsonHas(body, "osd0") && !jsonHas(body, "osd1") &&
+        !jsonHas(body, "osd2") && !jsonHas(body, "osd3") &&
+        !jsonHas(body, "lbl0") && !jsonHas(body, "lbl1") &&
+        !jsonHas(body, "lbl2") && !jsonHas(body, "lbl3") &&
         !jsonHas(body, "wifiSwitch") && !jsonHas(body, "wifiApEnabled") &&
         !jsonHas(body, "blePower") && !jsonHas(body, "scanAll") &&
         !jsonHas(body, "threshold") && !jsonHas(body, "debounce") &&
@@ -283,6 +308,13 @@ bool apiApplySettings(const String &body, bool &apNeedsRestart, bool &apShouldSt
         camSetBlePower(cfg.blePower);   // Applies live immediately, no reconnect
     }
 
+    // OSD layout. Validate every slot into a copy first, so a bad value
+    // leaves the live layout untouched.
+    //   "osdN": "e1,e2,e3,e4"  OsdElement ids, up to OSD_ELEMS_PER_SLOT
+    //   "lblN": "CAM"          optional prefix label (sanitized, max 6)
+    //   "slotN": 0..6          legacy single-choice preset (older UIs)
+    OsdSlotConfig newOsd[4];
+    memcpy(newOsd, cfg.osd, sizeof(newOsd));
     for (uint8_t s = 0; s < 4; s++) {
         char key[8];
         snprintf(key, sizeof(key), "slot%d", s);
@@ -292,9 +324,46 @@ bool apiApplySettings(const String &body, bool &apNeedsRestart, bool &apShouldSt
                 if (errBuf) strlcpy(errBuf, "invalid slot content", errBufLen);
                 return false;
             }
-            cfg.osdSlot[s] = (uint8_t)v;
+            osdSlotFromLegacy((uint8_t)v, newOsd[s]);
+        }
+        snprintf(key, sizeof(key), "osd%d", s);
+        if (jsonHas(body, key)) {
+            String list = jsonGetStr(body, key);
+            uint8_t el[OSD_ELEMS_PER_SLOT] = {0};
+            int n = 0;
+            long cur = -1;
+            for (unsigned i = 0; i <= list.length(); i++) {
+                char c = i < list.length() ? list[i] : ',';
+                if (c >= '0' && c <= '9') {
+                    cur = (cur < 0 ? 0 : cur * 10) + (c - '0');
+                    if (cur > 255) cur = 255;
+                } else if (c == ',') {
+                    if (cur >= 0) {
+                        if (cur >= OSD_EL_COUNT || n >= OSD_ELEMS_PER_SLOT) {
+                            if (errBuf) strlcpy(errBuf, cur >= OSD_EL_COUNT ? "invalid OSD element"
+                                                                          : "too many OSD elements", errBufLen);
+                            return false;
+                        }
+                        el[n++] = (uint8_t)cur;
+                    }
+                    cur = -1;
+                } else if (c != ' ') {
+                    if (errBuf) strlcpy(errBuf, "bad OSD element list", errBufLen);
+                    return false;
+                }
+            }
+            memcpy(newOsd[s].elem, el, sizeof(el));
+        }
+        snprintf(key, sizeof(key), "lbl%d", s);
+        if (jsonHas(body, key)) {
+            String lbl = jsonGetStr(body, key);
+            char tmp[33];
+            strlcpy(tmp, lbl.c_str(), sizeof(tmp));
+            osdSanitizeLabel(tmp);
+            strlcpy(newOsd[s].label, tmp, sizeof(newOsd[s].label));
         }
     }
+    memcpy(cfg.osd, newOsd, sizeof(cfg.osd));
 
     if (jsonHas(body, "ssid")) {
         String ssid = jsonGetStr(body, "ssid");

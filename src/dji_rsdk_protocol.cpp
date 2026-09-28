@@ -209,3 +209,54 @@ uint16_t rsdkFpsFromIdx(uint8_t idx) {
         default: return 0;
     }
 }
+
+const char *rsdkModeLabel(uint8_t m) {
+    switch (m) {
+        case 0x00: return "SLOMO";
+        case 0x01: return "VIDEO";
+        case 0x02: return "TLAPSE";     // static timelapse
+        case 0x05: return "PHOTO";
+        case 0x0A: return "HLAPSE";     // hyperlapse
+        case 0x1A: return "LIVE";
+        case 0x23: return "UVC";
+        case 0x28: return "NIGHT";      // low-light video / SuperNight
+        case 0x34: return "TRACK";      // subject tracking
+        case 0x38: return "360";
+        case 0x3A: return "HLAPSE";
+        case 0x3C: return "SELFIE";
+        case 0x3F: return "PHOTO";
+        case 0x41: return "BOOST";
+        case 0x43: return "VORTEX";
+        case 0x44: case 0x4A: return "NIGHT";
+        default:   return "";
+    }
+}
+
+const char *rsdkResolutionLabel(uint8_t r) {
+    switch (r) {
+        case 10: case 66:            return "1080P";
+        case 16: case 103: case 109: return "4K";
+        case 45: case 67:  case 95:  return "2.7K";
+        default:                     return "";
+    }
+}
+
+const char *rsdkAspectLabel(uint8_t r) {
+    switch (r) {
+        case 10: case 16: case 45:   return "16:9";
+        case 95: case 103:           return "4:3";
+        case 66: case 67: case 109:  return "9:16";
+        default:                     return "";
+    }
+}
+
+const char *rsdkEisLabel(uint8_t e) {
+    switch (e) {
+        case 0: return "OFF";
+        case 1: return "RS";
+        case 2: return "HS";
+        case 3: return "RS+";
+        case 4: return "HB";
+        default: return "";
+    }
+}
