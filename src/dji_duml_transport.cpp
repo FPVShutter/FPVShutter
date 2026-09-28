@@ -8,6 +8,7 @@
 #include "dji_duml_transport.h"
 #include "cam_registry.h"
 #include "scan_results.h"
+#include "dji_rsdk_protocol.h"   // shared resolution / fps enums (see 02/19)
 
 // ──────────────────────────────────────────────────────────────────────────────
 // GATT layout + company IDs (brand-wide constants)
@@ -106,6 +107,72 @@ void dumlLogNonDuml(const char *charName, const uint8_t *pData, size_t length) {
         hexLen += snprintf(hexBuf + hexLen, sizeof(hexBuf) - hexLen, "%02X ", pData[i]);
     }
     DBG("DUML: <<< NON-DUML [%s] (%d bytes): %s", charName, length, hexBuf);
+}
+
+size_t dumlBuildVideoFormatQuery(uint8_t *packet, uint16_t seq) {
+    return dumlBuildPacket(packet, 0x02, 0x01, seq, 0x20, 0x02, 0x19, nullptr, 0);
+}
+
+bool dumlApplyVideoFormatReply(const DumlFrameHeader &hdr, const uint8_t *pData,
+                               size_t length, CameraTelemetry &tel) {
+    // 11-byte header + result + res + fps + 3 unknown + CRC16 = 19 bytes.
+    if (!(hdr.flags & 0x80) || hdr.cmdSet != 0x02 || hdr.cmdId != 0x19) return false;
+    if (length < 16 || pData[11] != 0x00) return false;   // short ack is just "01"
+    const uint8_t res = pData[12], fpsIdx = pData[13];
+    strlcpy(tel.resLabel,    rsdkResolutionLabel(res), sizeof(tel.resLabel));
+    strlcpy(tel.aspectLabel, rsdkAspectLabel(res),     sizeof(tel.aspectLabel));
+    tel.fps = rsdkFpsFromIdx(fpsIdx);
+    if (!tel.resLabel[0] || !tel.fps) {
+        DBG("DUML: 02/19 video format res=%u fps idx=%u not in DJI's table", res, fpsIdx);
+    }
+    return true;
+}
+
+void dumlFrameLogReset(DumlFrameLog &log) {
+    log.count = 0;
+}
+
+void dumlFrameLog(DumlFrameLog &log, uint8_t level, const char *tag, const char *charName,
+                  const uint8_t *pData, size_t length, const DumlFrameHeader &hdr) {
+    if (level == 0 || length < 13) return;
+    const uint32_t key = ((uint32_t)hdr.flags << 24) | ((uint32_t)hdr.cmdSet << 16) |
+                         ((uint32_t)hdr.cmdId << 8) | pData[4];
+    // FNV-1a over everything except the sequence number (bytes 6-7) and the
+    // trailing CRC16, which change on every frame and would defeat level 2.
+    uint32_t h = 2166136261u;
+    for (size_t i = 0; i + 2 < length; i++) {
+        if (i == 6 || i == 7) continue;
+        h = (h ^ pData[i]) * 16777619u;
+    }
+
+    const char *what = "new";
+    uint8_t i = 0;
+    for (; i < log.count; i++) {
+        if (log.keys[i] == key) break;
+    }
+    if (i < log.count) {
+        if (level < 2 || log.hashes[i] == h) return;
+        what = "changed";
+        log.hashes[i] = h;
+    } else {
+        if (log.count >= DUML_FRAME_LOG_MAX) return;
+        log.keys[log.count]   = key;
+        log.hashes[log.count] = h;
+        log.count++;
+    }
+
+    // Whole frame up to 128 bytes (the Nano's 02/80 push is 73) so nothing
+    // hides behind a "..." while hunting for a field. Static: this runs on
+    // the NimBLE host task, whose stack is small; calls never overlap.
+    static char hexBuf[3 * 128 + 1];
+    hexBuf[0] = '\0';
+    size_t hexLen = 0;
+    for (size_t b = 0; b < length && b < 128; b++) {
+        hexLen += snprintf(hexBuf + hexLen, sizeof(hexBuf) - hexLen, "%02X ", pData[b]);
+    }
+    DBG("%s: %s frame [%s] %02X->%02X flags=%02X set=%02X id=%02X len=%u: %s%s",
+        tag, what, charName, pData[4], pData[5], hdr.flags, hdr.cmdSet, hdr.cmdId,
+        (unsigned)length, hexBuf, length > 128 ? "..." : "");
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

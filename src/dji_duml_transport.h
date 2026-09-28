@@ -165,6 +165,50 @@ bool dumlParseHeader(const uint8_t *pData, size_t length, DumlFrameHeader &out);
 void dumlLogNonDuml(const char *charName, const uint8_t *pData, size_t length);
 
 // ──────────────────────────────────────────────────────────────────────────────
+// Video format (02/19 "Video Format Get")
+// ──────────────────────────────────────────────────────────────────────────────
+// Request: app 0x02 -> camera 0x01, flags 0x20, empty payload. The Osmo Nano
+// answers twice with the request's sequence number: first a short ack
+// (payload 01), then the result:
+//   00 | resolution | fps index | 00 00 00 (unknown)
+// Resolution and fps index use the SAME enums as DJI's R SDK 1D02 push
+// (rsdkResolutionLabel / rsdkFpsFromIdx) — bench-verified on the Nano
+// 2026-09-27: 5F 05 = 2.7K 4:3 50, 10 06 = 4K 16:9 60, 5F 06, 2D 06 (2.7K
+// 16:9 60), 0A 05 / 0A 06 (1080p 50/60), each matching the camera's menu.
+size_t dumlBuildVideoFormatQuery(uint8_t *packet, uint16_t seq);
+
+/// If this frame is the 02/19 result, fill tel.resLabel / aspectLabel / fps
+/// and return true. Returns false for the short ack and anything else.
+bool dumlApplyVideoFormatReply(const DumlFrameHeader &hdr, const uint8_t *pData,
+                               size_t length, CameraTelemetry &tel);
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Bench aid: inbound frame discovery log (shared by every DUML backend)
+// ──────────────────────────────────────────────────────────────────────────────
+// Each backend owns one DumlFrameLog and calls dumlFrameLog() from its
+// notifyCallback right after dumlParseHeader(), gated by its own config.h
+// flag (DJI_NANO_FRAME_DISCOVERY / DJI_ACTION_FRAME_DISCOVERY):
+//   level 1: hex-dump the FIRST frame of each distinct (flags, set, id,
+//            sender) type, once per boot/backend init.
+//   level 2: also re-dump a type whenever its bytes change. Noisy (a status
+//            push with a running counter logs every time) but it's how you
+//            find where a setting lives: change it on the camera and see
+//            which frame changes.
+// Keys beyond DUML_FRAME_LOG_MAX types are ignored. Called from the NimBLE
+// host task: a small table scan plus one DBG line per logged frame.
+#define DUML_FRAME_LOG_MAX 32
+
+struct DumlFrameLog {
+    uint32_t keys[DUML_FRAME_LOG_MAX];
+    uint32_t hashes[DUML_FRAME_LOG_MAX];   // FNV-1a of the last logged frame (level 2)
+    uint8_t  count = 0;
+};
+
+void dumlFrameLogReset(DumlFrameLog &log);
+void dumlFrameLog(DumlFrameLog &log, uint8_t level, const char *tag, const char *charName,
+                  const uint8_t *pData, size_t length, const DumlFrameHeader &hdr);
+
+// ──────────────────────────────────────────────────────────────────────────────
 // Pairing handshake. NOTE: the identifier+token scheme here is commented in
 // the original dji_camera.cpp as "hardware-verified by the osmosis project,
 // Action 5 Pro / Osmo Nano" — i.e. unlike the record opcode, this piece

@@ -15,6 +15,8 @@
 // unavailable on file:// or plain http://.
 // ============================================================================
 
+// Legacy single-choice slot contents -- only used when talking to firmware
+// <= v2.3, which has no per-element OSD layout (no "osdCfg" in its status).
 const OSD_SLOT_NAMES = [
   "Off",
   "Cam status",
@@ -502,6 +504,14 @@ function renderStatus(st) {
   $("stRecTime").textContent = st.cam?.valid
     ? (camRec ? fmtSeconds(st.cam.recTime) : `${fmtHuman(st.cam.recTime)} left`)
     : "—";
+  {
+    const c = st.cam || {};
+    const parts = [c.res && c.fps ? `${c.res}${c.ar ? " " + c.ar : ""} ${c.fps}fps` : (c.res || ""),
+                   c.mode || "", c.eis ? `EIS ${c.eis}` : "",
+                   typeof c.freeMb === "number" && c.freeMb >= 0 ? `${(c.freeMb / 1024).toFixed(1)} GB free` : "",
+                   ["", "warm", "TOO HOT", "OVERHEAT"][c.temp] || ""].filter(Boolean);
+    $("stVideo").textContent = c.ready && parts.length ? parts.join(" · ") : "—";
+  }
   $("stDesired").textContent = st.rec?.desired ? "ON" : "off";
   $("stRcValue").textContent = st.rec ? `${st.rec.rcValue} us (ch ${st.rec.auxCh})` : "—";
   $("stFc").textContent = st.fc?.alive
@@ -518,6 +528,8 @@ function renderStatus(st) {
   if (!formsPopulated) {
     populateForms(st);
     formsPopulated = true;
+  } else {
+    syncOsdEditor(st);
   }
 }
 
@@ -583,6 +595,141 @@ function escapeHtml(s) {
   ));
 }
 
+// ──────────────────────────────────────────────────────────────────────────
+// OSD layout editor (label + up to 4 elements per Custom Message)
+// ──────────────────────────────────────────────────────────────────────────
+// Text is rendered client-side by osd-format.js (a mirror of the firmware's
+// osd_format.cpp), so the preview follows every edit before it's saved, and
+// can use canned sample states instead of the live camera.
+const OF = window.OsdFormat;
+let osdEdit = null;      // [{e:[4 ids], l:""}] being edited
+let osdDirty = false;    // unsaved edits: don't overwrite from status polls
+let osdLegacy = false;   // firmware <= v2.3: single-choice slots only
+let osdSupKey = "";
+
+function buildOsdEditor(st) {
+  const host = $("osdSlots");
+  host.innerHTML = "";
+  osdLegacy = !Array.isArray(st.osdCfg);
+  $("osdSrc").closest("label").hidden = osdLegacy;
+  $("btnRevertOsd").hidden = osdLegacy;
+  const canvasAttrs = `class="osd-preview" width="${OSD_MAX_TEXT_LEN * OSD_FONT_GLYPH_W * OSD_FONT_SCALE}" height="${OSD_FONT_GLYPH_H * OSD_FONT_SCALE}"`;
+
+  if (osdLegacy) {
+    // Older firmware: the original one-dropdown-per-slot form, preview = the
+    // text the device last sent.
+    const slots = st.slots || [0, 0, 0, 0];
+    const osdText = st.osd || ["", "", "", ""];
+    slots.forEach((val, i) => {
+      const wrap = document.createElement("div");
+      wrap.className = "osd-slot";
+      const opts = OSD_SLOT_NAMES.map((name, idx) =>
+        `<option value="${idx}" ${idx === val ? "selected" : ""}>${name}</option>`).join("");
+      wrap.innerHTML = `
+        <label>Custom Message ${i + 1}
+          <select data-slot="${i}">${opts}</select>
+        </label>
+        <canvas ${canvasAttrs} data-text="${escapeHtml(osdText[i] || "")}"></canvas>`;
+      host.appendChild(wrap);
+      drawOsdPreview(wrap.querySelector("canvas"), osdText[i] || "");
+    });
+    logLine("[console] firmware has no per-element OSD layout -- showing the classic slot picker (update firmware for the new editor)");
+    return;
+  }
+
+  const src = $("osdSrc");
+  if (src.options.length === 1) {
+    Object.entries(OF.SAMPLES).forEach(([k, v]) => src.add(new Option(v.name, k)));
+    src.addEventListener("change", renderOsdPreview);
+  }
+  for (let i = 0; i < 4; i++) {
+    const wrap = document.createElement("div");
+    wrap.className = "osd-slot";
+    let els = "";
+    for (let k = 0; k < OF.ELEMS_PER_SLOT; k++) {
+      els += `<select data-slot="${i}" data-k="${k}" aria-label="Custom Message ${i + 1} element ${k + 1}"></select>`;
+    }
+    wrap.innerHTML = `
+      <div class="osd-head">Custom Message ${i + 1}
+        <input type="text" data-label="${i}" maxlength="${OF.LABEL_MAX}" placeholder="label" spellcheck="false" autocomplete="off" aria-label="Custom Message ${i + 1} label">
+        <span class="osd-count" data-count="${i}"></span>
+      </div>
+      <div class="osd-els">${els}</div>
+      <canvas ${canvasAttrs} data-preview="${i}"></canvas>
+      <div class="osd-warn" data-warn="${i}"></div>`;
+    host.appendChild(wrap);
+  }
+  host.querySelectorAll("input[data-label]").forEach((inp) =>
+    inp.addEventListener("input", () => {
+      if (!osdEdit) return;
+      osdDirty = true;
+      osdEdit[+inp.dataset.label].l = inp.value;
+      renderOsdPreview();
+    }));
+  host.querySelectorAll("select[data-k]").forEach((sel) =>
+    sel.addEventListener("change", () => {
+      if (!osdEdit) return;
+      osdDirty = true;
+      osdEdit[+sel.dataset.slot].e[+sel.dataset.k] = Number(sel.value);
+      renderOsdPreview();
+    }));
+  osdSupKey = "";
+  osdDirty = false;
+  syncOsdEditor(st);
+}
+
+/// Called on every status reply: refresh "n/a" markers, reload the saved
+/// layout unless the user is mid-edit, and re-render the preview.
+function syncOsdEditor(st) {
+  if (osdLegacy || !Array.isArray(st.osdCfg) || !$("osdSlots").querySelector("select[data-k]")) return;
+  const key = `${st.osdSup}/${st.cam?.type}`;
+  if (key !== osdSupKey) {
+    osdSupKey = key;
+    $("osdSlots").querySelectorAll("select[data-k]").forEach((sel) => {
+      const v = sel.value;
+      sel.innerHTML = "";
+      OF.ELEMENTS.forEach((el) => {
+        const o = new Option(el.name + (OF.supported(st, el.id) ? "" : " · n/a"), el.id);
+        o.title = el.eg || "";
+        sel.add(o);
+      });
+      if (v !== "") sel.value = v;
+    });
+  }
+  if (!osdDirty) {
+    osdEdit = st.osdCfg.map((c) => ({ e: [0, 1, 2, 3].map((k) => (c.e && c.e[k]) | 0), l: c.l || "" }));
+    osdEdit.forEach((c, i) => {
+      const inp = document.querySelector(`#osdSlots input[data-label="${i}"]`);
+      if (document.activeElement !== inp) inp.value = c.l;
+      c.e.forEach((id, k) => { document.querySelector(`#osdSlots select[data-slot="${i}"][data-k="${k}"]`).value = id; });
+    });
+  }
+  renderOsdPreview();
+}
+
+function renderOsdPreview() {
+  if (!osdEdit || osdLegacy) return;
+  const st = lastStatus;
+  const srcKey = $("osdSrc").value;
+  const ctx = srcKey === "live" ? OF.ctxFromStatus(st) : OF.SAMPLES[srcKey].ctx;
+  const camName = st?.cam?.model || st?.cam?.name || "this camera";
+  osdEdit.forEach((cfg, i) => {
+    const r = OF.slot(cfg, ctx);
+    const canvas = document.querySelector(`#osdSlots canvas[data-preview="${i}"]`);
+    canvas.dataset.text = r.text;
+    canvas.title = r.text;
+    drawOsdPreview(canvas, r.text);
+    const cnt = document.querySelector(`#osdSlots [data-count="${i}"]`);
+    cnt.textContent = `${r.text.length}/${OF.MAX_LEN}`;
+    cnt.classList.toggle("over", r.dropped.length > 0);
+    const warn = [];
+    if (r.dropped.length) warn.push(`Won't fit: ${r.dropped.map((id) => OF.ELEMENTS[id].name).join(", ")}`);
+    const na = cfg.e.filter((id) => id && !OF.supported(st, id));
+    if (na.length) warn.push(`${na.map((id) => OF.ELEMENTS[id].name).join(", ")}: not reported by ${camName}`);
+    document.querySelector(`#osdSlots [data-warn="${i}"]`).textContent = warn.join(" · ");
+  });
+}
+
 function populateForms(st) {
   $("camType").value = String(st.cam?.type ?? 0);
 
@@ -593,24 +740,7 @@ function populateForms(st) {
   $("stopOnDisarm").checked = !!st.rec?.sod;
   $("stopOnDisarmDelay").value = st.rec?.sodDelay ?? 0;
 
-  const osdSlots = $("osdSlots");
-  osdSlots.innerHTML = "";
-  const slots = st.slots || [0, 0, 0, 0];
-  const osdText = st.osd || ["", "", "", ""];
-  slots.forEach((val, i) => {
-    const wrap = document.createElement("div");
-    wrap.className = "osd-slot";
-    const opts = OSD_SLOT_NAMES.map((name, idx) =>
-      `<option value="${idx}" ${idx === val ? "selected" : ""}>${name}</option>`
-    ).join("");
-    wrap.innerHTML = `
-      <label>Custom Message ${i + 1}
-        <select data-slot="${i}">${opts}</select>
-      </label>
-      <canvas class="osd-preview" width="${OSD_MAX_TEXT_LEN * OSD_FONT_GLYPH_W * OSD_FONT_SCALE}" height="${OSD_FONT_GLYPH_H * OSD_FONT_SCALE}" data-text="${escapeHtml(osdText[i] || "")}" title="${escapeHtml(osdText[i] || "")}"></canvas>`;
-    osdSlots.appendChild(wrap);
-    drawOsdPreview(wrap.querySelector("canvas.osd-preview"), osdText[i] || "");
-  });
+  buildOsdEditor(st);
 
   $("apSsid").value = "";
   $("apPass").value = "";
@@ -867,12 +997,27 @@ function wireStaticActions() {
   $("btnSaveOsd").addEventListener("click", (e) =>
     runAction(e.target, async () => {
       const body = { path: "settings" };
-      document.querySelectorAll("#osdSlots select[data-slot]").forEach((sel) => {
-        body[`slot${sel.dataset.slot}`] = Number(sel.value);
-      });
+      if (osdLegacy) {
+        document.querySelectorAll("#osdSlots select[data-slot]").forEach((sel) => {
+          body[`slot${sel.dataset.slot}`] = Number(sel.value);
+        });
+      } else {
+        if (!osdEdit) throw new Error("no status from the device yet");
+        osdEdit.forEach((c, i) => {
+          body[`osd${i}`] = c.e.filter((id) => id).join(",");
+          body[`lbl${i}`] = OF.sanitizeLabel(c.l);
+        });
+      }
       const r = await sendCommand(body);
       if (!r.ok) throw new Error(r.error || "failed");
+      osdDirty = false;
+      logLine("[console] OSD layout saved");
     }));
+
+  $("btnRevertOsd").addEventListener("click", () => {
+    osdDirty = false;
+    if (lastStatus) syncOsdEditor(lastStatus);
+  });
 
   $("btnSaveWifi").addEventListener("click", (e) =>
     runAction(e.target, async () => {

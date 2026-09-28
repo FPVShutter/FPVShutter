@@ -230,10 +230,22 @@ select option { color: #131a2b; background: #fff; }
 
 .osd-slots {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin-bottom: 12px;
 }
-.osd-slot { display: flex; flex-direction: column; }
+.osd-slot { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.osd-slot .osd-head { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 13px; }
+.osd-slot .osd-head input { width: 92px; font-family: var(--mono); text-transform: uppercase; padding: 6px 8px; }
+.osd-slot .osd-count { margin-left: auto; font-family: var(--mono); font-size: 12px; color: var(--dim); font-weight: 400; }
+.osd-slot .osd-count.over { color: var(--warn, #ffb454); }
+.osd-slot .osd-els { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.osd-slot .osd-els select { min-width: 0; padding: 6px 8px; font-size: 12.5px; }
+.osd-slot .osd-warn { font-size: 12px; color: var(--warn, #ffb454); min-height: 0; }
+.osd-slot .osd-warn:empty { display: none; }
+.osd-src { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; white-space: nowrap; }
+.osd-src select { min-width: 0; }
+.osd-src select { width: auto; flex: 1; max-width: 320px; }
 /* Live OSD preview: renders the slot's text through the real Betaflight
    font (see docs/app.js), so it's styled like a tiny goggle readout rather
    than a plain label -- black backing, crisp nearest-neighbor scaling. */

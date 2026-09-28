@@ -147,6 +147,25 @@ input[type=range]::-moz-range-thumb{width:19px;height:19px;border-radius:50%;bac
 .slotrow .nm{width:158px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px}
 .slotrow select{flex:1;min-width:140px;width:auto}
 .slotrow .pv{width:100%;font-family:var(--mono);font-size:12.5px;color:var(--dim);padding-left:2px}
+.osdbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.osdbar label{font-size:13px;font-weight:600}
+.osdbar select{width:auto;flex:1;min-width:180px;padding:9px 11px;font-size:13px}
+.oslot{padding:14px 0;border-bottom:1px dashed var(--stroke)}
+.oslot:last-child{border-bottom:none}
+.oslot .hd{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.oslot .hd b{font-size:13px;min-width:44px}
+.oslot .hd input{width:110px;padding:8px 10px;font-size:13px;font-family:var(--mono);text-transform:uppercase}
+.oslot .hd .cnt{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--dim)}
+.oslot .hd .cnt.over{color:var(--warn)}
+.oslot .els{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+.oslot .els select{padding:8px 9px;font-size:12.5px;border-radius:11px}
+@media(max-width:560px){.oslot .els{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.osdbox{margin-top:9px;display:inline-block;max-width:100%;overflow:hidden;padding:7px 9px;border-radius:9px;
+  background:#262b33 repeating-linear-gradient(90deg,transparent 0 calc(1ch - 1px),rgba(255,255,255,.07) calc(1ch - 1px) 1ch) 9px 0/calc(100% - 18px) 100% no-repeat;
+  font:700 16px/1.25 var(--mono);color:#fff;white-space:pre;letter-spacing:0;
+  text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000}
+.oslot .warnl{font-size:12px;color:var(--warn);margin-top:6px}
+.oslot .warnl:empty{display:none}
 .camrow{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:15px;background:var(--glass2);border:1px solid var(--stroke);margin-bottom:9px}
   .camrow .ci{flex:1;min-width:0}
   .camrow .ci b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -459,12 +478,18 @@ footer{text-align:center;color:var(--dim);font-size:11.5px;padding:18px 0 6px}
 <section id="tab-osd" hidden>
   <div class="glass card">
     <h2><svg class="ic"><use href="#i-layers"/></svg>Custom messages 1–4</h2>
+    <div class="osdbar"><label for="osdSrc">Preview with</label>
+      <select id="osdSrc"><option value="live">Live camera &amp; FC data</option></select></div>
     <div id="slotRows"></div>
-    <div style="margin-top:16px"><button class="btn primary" id="saveSlots">Save OSD slots</button></div>
+    <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn primary" id="saveSlots">Save OSD slots</button>
+      <button class="btn" id="revertSlots">Discard changes</button></div>
     <div class="note">Each slot feeds one of Betaflight's four <b>Custom Message</b>
-      OSD elements over MSP (<code>MSP2_SET_TEXT</code>, max 16 chars). Place them
-      anywhere in the Betaflight Configurator OSD tab — position comes from BF,
-      content from here. Live text is previewed on the Dashboard.</div>
+      OSD elements over MSP (<code>MSP2_SET_TEXT</code>, max 16 chars). Build it from an
+      optional label plus up to four elements; they're joined with spaces and anything
+      that doesn't fit whole is dropped. The preview updates as you edit, before saving.
+      Position the elements in the Betaflight Configurator OSD tab. Elements marked
+      <b>n/a</b> aren't reported by the selected camera and will show <code>--</code>.</div>
   </div>
 </section>
 
@@ -563,6 +588,174 @@ if (typeof toast !== 'function') {
 }
 'use strict';
 const $=id=>document.getElementById(id);
+/* ---------- OSD formatter: copy of docs/osd-format.js (keep in sync; tools/osd_host_test checks it) ---------- */
+/*OSDFMT-BEGIN*/
+(function (root) {
+  "use strict";
+  var MAX_LEN = 16, ELEMS_PER_SLOT = 4, LABEL_MAX = 6;
+  // BLE link states (camera_common.h BleConnectionState order)
+  var L_OFF = 0, L_SCAN = 1, L_CONN = 2, L_PAIR = 3, L_READY = 4;
+  // CameraRecordingState
+  var S_STBY = 1, S_REC = 2, S_ERR = 3;
+
+  // id -> element. Ids match OsdElement in settings.h (never renumber).
+  // cam: camera-data element (hidden while the camera is down when the slot
+  // also shows CAM STATE / LINK). eg: example text for the picker.
+  var ELEMENTS = [
+    { id: 0,  key: "none",   name: "(empty)" },
+    { id: 1,  key: "state",  name: "Camera state",    eg: "REC / STBY / CAM OFF" },
+    { id: 2,  key: "time",   name: "Record time",     eg: "12:34 / 2H33M left", cam: 1 },
+    { id: 3,  key: "batt",   name: "Camera battery",  eg: "85%", cam: 1 },
+    { id: 4,  key: "link",   name: "Link state",      eg: "READY / SCAN / OFF" },
+    { id: 5,  key: "fcv",    name: "FC voltage",      eg: "15.8V" },
+    { id: 6,  key: "arm",    name: "Arm state",       eg: "ARMED / DISARMED" },
+    { id: 7,  key: "mode",   name: "Camera mode",     eg: "VIDEO / SLOMO / HLAPSE", cam: 1 },
+    { id: 8,  key: "res",    name: "Resolution",      eg: "4K / 2.7K / 1080P", cam: 1 },
+    { id: 9,  key: "ar",     name: "Aspect ratio",    eg: "16:9 / 4:3", cam: 1 },
+    { id: 10, key: "fps",    name: "Frame rate",      eg: "60FPS", cam: 1 },
+    { id: 11, key: "fmt",    name: "Res + fps",       eg: "4K60 / 2.7K50", cam: 1 },
+    { id: 12, key: "eis",    name: "Stabilisation",   eg: "RS+ / HS / EIS OFF", cam: 1 },
+    { id: 13, key: "sd",     name: "Card free",       eg: "112G / 850M", cam: 1 },
+    { id: 14, key: "temp",   name: "Overheat alert",  eg: "HOT (blank when OK)", cam: 1 }
+  ];
+
+  function pad2(n) { return (n < 10 ? "0" : "") + n; }
+
+  function human(s) {
+    s = Math.max(0, s | 0);
+    if (s < 60) return s + "S";
+    var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+    if (h > 0) return m > 0 ? h + "H" + m + "M" : h + "H";
+    return m + "M";
+  }
+
+  function sanitizeLabel(str) {
+    var out = "";
+    str = String(str == null ? "" : str);
+    for (var i = 0; i < str.length && out.length < LABEL_MAX; i++) {
+      var c = str.charCodeAt(i);
+      if (c >= 97 && c <= 122) c -= 32;
+      if (c < 0x20 || c > 0x5f || c === 34 || c === 92) continue;
+      out += String.fromCharCode(c);
+    }
+    return out.replace(/^ +| +$/g, "");
+  }
+
+  // ctx: { link, ready, valid, cst, batt, recTime, mode, res, ar, fps, eis,
+  //        temp, freeMb, fcAlive, armed, vbat10 }
+  function element(id, c, hideCam) {
+    var el = ELEMENTS[id];
+    if (!el || id === 0) return "";
+    if (!c.ready && hideCam && el.cam) return "";
+    switch (id) {
+      case 1:
+        if (c.link === L_OFF) return "CAM OFF";
+        if (c.link === L_SCAN) return "CAM SCAN";
+        if (c.link === L_CONN) return "CAM CONN";
+        if (c.link === L_PAIR) return "CAM PAIR";
+        if (!c.ready) return "CAM PAIR";
+        if (c.cst === S_REC) return "REC";
+        if (c.cst === S_STBY) return "STBY";
+        if (c.cst === S_ERR) return "CAM ERR";
+        return "CAM ???";
+      case 2:
+        if (!c.ready || !c.valid) return "--:--";
+        var t = c.recTime | 0;
+        return c.cst === S_REC ? pad2(Math.floor(t / 60)) + ":" + pad2(t % 60) : human(t);
+      case 3:
+        return (c.ready && c.batt >= 0 && c.batt <= 100) ? c.batt + "%" : "--%";
+      case 4:
+        return ["OFF", "SCAN", "CONN", "PAIR", "READY"][c.link] || "OFF";
+      case 5:
+        return c.vbat10 > 0 ? Math.floor(c.vbat10 / 10) + "." + (c.vbat10 % 10) + "V" : "--.-V";
+      case 6:
+        return !c.fcAlive ? "FC NOLINK" : (c.armed ? "ARMED" : "DISARMED");
+      case 7:  return (c.ready && c.mode) ? c.mode : "--";
+      case 8:  return (c.ready && c.res) ? c.res : "--";
+      case 9:  return (c.ready && c.ar) ? c.ar : "--";
+      case 10: return (c.ready && c.fps) ? c.fps + "FPS" : "--FPS";
+      case 11: return (c.ready && c.res && c.fps) ? c.res + c.fps : "--";
+      case 12:
+        if (!c.ready || !c.eis) return "--";
+        return c.eis === "OFF" ? "EIS OFF" : c.eis;
+      case 13:
+        var mb = c.freeMb;
+        if (!c.ready || mb == null || mb < 0) return "--";
+        if (mb < 1024) return mb + "M";
+        if (mb < 10240) { var tn = Math.floor((mb * 10 + 512) / 1024); return Math.floor(tn / 10) + "." + (tn % 10) + "G"; }
+        return Math.floor((mb + 512) / 1024) + "G";
+      case 14:
+        if (!c.ready) return "";
+        return ["", "WARM", "HOT", "OVERHEAT"][c.temp] || "";
+    }
+    return "";
+  }
+
+  // slot: { e: [ids], l: "LABEL" } -> { text, dropped: [ids that didn't fit] }
+  function slot(cfg, c) {
+    var ids = (cfg && cfg.e) || [], label = sanitizeLabel(cfg && cfg.l);
+    var hideCam = ids.indexOf(1) >= 0 || ids.indexOf(4) >= 0;
+    var out = "", dropped = [], full = false;
+    function add(part) {
+      if (!part) return true;
+      var need = part.length + (out ? 1 : 0);
+      if (out.length + need > MAX_LEN) return false;
+      out += (out ? " " : "") + part;
+      return true;
+    }
+    add(label);
+    for (var i = 0; i < ids.length && i < ELEMS_PER_SLOT; i++) {
+      var id = ids[i];
+      if (!id || !ELEMENTS[id]) continue;
+      if (full) { dropped.push(id); continue; }
+      if (!add(element(id, c, hideCam))) { full = true; dropped.push(id); }
+    }
+    return { text: out, dropped: dropped };
+  }
+
+  // Status JSON (/api/status or the serial "status" reply) -> ctx.
+  function ctxFromStatus(st) {
+    var cam = (st && st.cam) || {}, fc = (st && st.fc) || {};
+    var link = typeof cam.state === "number" ? cam.state : L_OFF;
+    var ready = typeof cam.ready === "boolean" ? cam.ready : link === L_READY;
+    var cst = typeof cam.cst === "number" ? cam.cst : (cam.recording ? S_REC : (cam.valid ? S_STBY : 0));
+    return {
+      link: link, ready: ready, valid: !!cam.valid, cst: cst,
+      batt: typeof cam.batt === "number" ? cam.batt : -1, recTime: cam.recTime | 0,
+      mode: cam.mode || "", res: cam.res || "", ar: cam.ar || "", fps: cam.fps | 0,
+      eis: cam.eis || "", temp: cam.temp | 0,
+      freeMb: typeof cam.freeMb === "number" ? cam.freeMb : -1,
+      fcAlive: !!fc.alive, armed: !!fc.armed, vbat10: fc.vbat10 | 0
+    };
+  }
+
+  // Canned states for previewing without (or regardless of) a camera.
+  var base = { link: L_READY, ready: true, valid: true, batt: 85, mode: "VIDEO", res: "4K",
+               ar: "16:9", fps: 60, eis: "RS+", temp: 0, freeMb: 114688,
+               fcAlive: true, vbat10: 158 };
+  function mk(o) { var r = {}, k; for (k in base) r[k] = base[k]; for (k in o) r[k] = o[k]; return r; }
+  var SAMPLES = {
+    recording: { name: "Sample: recording, armed", ctx: mk({ cst: S_REC, recTime: 754, armed: true }) },
+    standby:   { name: "Sample: standby",          ctx: mk({ cst: S_STBY, recTime: 9180, armed: false }) },
+    hot:       { name: "Sample: recording, hot",   ctx: mk({ cst: S_REC, recTime: 1392, armed: true, temp: 2, batt: 23, freeMb: 3400 }) },
+    offline:   { name: "Sample: camera off",       ctx: mk({ link: L_OFF, ready: false, valid: false, cst: 0, armed: false }) }
+  };
+
+  // Bit n of the firmware's "osdSup" = element n is filled by this camera.
+  // Fallback for firmware that doesn't send it: everything "supported".
+  function supported(st, id) {
+    if (!st || typeof st.osdSup !== "number") return true;
+    return id === 0 || ((st.osdSup >>> id) & 1) === 1;
+  }
+
+  root.OsdFormat = {
+    MAX_LEN: MAX_LEN, ELEMS_PER_SLOT: ELEMS_PER_SLOT, LABEL_MAX: LABEL_MAX,
+    ELEMENTS: ELEMENTS, SAMPLES: SAMPLES,
+    element: element, slot: slot, human: human, sanitizeLabel: sanitizeLabel,
+    ctxFromStatus: ctxFromStatus, supported: supported
+  };
+})(typeof window !== "undefined" ? window : globalThis);
+/*OSDFMT-END*/
 let S=null;
 let pendingBrand=-1;
 let settingsLoaded=false;
@@ -649,20 +842,60 @@ $('selWifiCh').onchange=async()=>{
   }catch(e){console.error('selWifiCh error:',e);toast('Error: '+e.message);}
 };
 
-/* ---------- build OSD slot rows ---------- */
-const SLOT_NAMES=['Off','Cam status','Rec time','Battery','Link state','FC battery','Arm state'];
+/* ---------- OSD slot editor (elements + label, client-side preview) ---------- */
+const OF=window.OsdFormat;
+let osdEdit=null;      // [{e:[4 ids],l:''}] being edited, null until first status
+let osdDirty=false;    // user has unsaved edits: don't overwrite from polls
+let osdSupKey='';      // last osdSup+camera used to label the element pickers
 (()=>{
+  const src=$('osdSrc');
+  Object.keys(OF.SAMPLES).forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=OF.SAMPLES[k].name;src.appendChild(o);});
+  src.onchange=osdPreview;
   const host=$('slotRows');
   for(let i=0;i<4;i++){
-    const row=document.createElement('div');row.className='slotrow';
-    const nm=document.createElement('div');nm.className='nm';
-    nm.innerHTML='CM'+(i+1);
-    const sel=document.createElement('select');sel.id='sl'+i;
-    SLOT_NAMES.forEach((n,v)=>{const o=document.createElement('option');o.value=v;o.textContent=n;sel.appendChild(o);});
-    const pv=document.createElement('div');pv.className='pv';pv.id='spv'+i;
-    row.appendChild(nm);row.appendChild(sel);row.appendChild(pv);
-    host.appendChild(row);
+    const row=document.createElement('div');row.className='oslot';
+    let h='<div class="hd"><b>CM'+(i+1)+'</b><input type="text" id="ol'+i+'" maxlength="'+OF.LABEL_MAX+'" placeholder="label" spellcheck="false" autocomplete="off"><span class="cnt" id="oc'+i+'"></span></div><div class="els">';
+    for(let k=0;k<OF.ELEMS_PER_SLOT;k++)h+='<select id="oe'+i+'_'+k+'" data-s="'+i+'" data-k="'+k+'"></select>';
+    h+='</div><div class="osdbox" id="ob'+i+'"></div><div class="warnl" id="ow'+i+'"></div>';
+    row.innerHTML=h;host.appendChild(row);
+    $('ol'+i).oninput=e=>{if(!osdEdit)return;osdDirty=true;osdEdit[i].l=e.target.value;osdPreview();};
+    for(let k=0;k<OF.ELEMS_PER_SLOT;k++)$('oe'+i+'_'+k).onchange=e=>{
+      if(!osdEdit)return;osdDirty=true;osdEdit[i].e[k]=+e.target.value;osdPreview();};
   }})();
+function osdOptions(){
+  const key=(S&&S.osdSup)+'/'+(S&&S.cam&&S.cam.type);
+  if(key===osdSupKey)return;osdSupKey=key;
+  for(let i=0;i<4;i++)for(let k=0;k<OF.ELEMS_PER_SLOT;k++){
+    const sel=$('oe'+i+'_'+k);const v=sel.value;sel.innerHTML='';
+    OF.ELEMENTS.forEach(el=>{const o=document.createElement('option');o.value=el.id;
+      o.textContent=el.name+(OF.supported(S,el.id)?'':' \u00b7 n/a');o.title=el.eg||'';sel.appendChild(o);});
+    if(v!=='')sel.value=v;}
+}
+function osdLoad(){
+  if(!S||!S.osdCfg)return;
+  osdEdit=S.osdCfg.map(c=>({e:[0,1,2,3].map(k=>(c.e&&c.e[k])|0),l:c.l||''}));
+  osdOptions();
+  for(let i=0;i<4;i++){
+    if(document.activeElement!==$('ol'+i))$('ol'+i).value=osdEdit[i].l;
+    for(let k=0;k<OF.ELEMS_PER_SLOT;k++)$('oe'+i+'_'+k).value=osdEdit[i].e[k];}
+}
+function osdPreview(){
+  if(!osdEdit)return;
+  const src=$('osdSrc').value;
+  const ctx=src==='live'?OF.ctxFromStatus(S):OF.SAMPLES[src].ctx;
+  const camName=(S&&S.cam&&(S.cam.model||S.cam.name))||'this camera';
+  for(let i=0;i<4;i++){
+    const r=OF.slot(osdEdit[i],ctx);
+    $('ob'+i).textContent=(r.text+' '.repeat(OF.MAX_LEN)).slice(0,OF.MAX_LEN);
+    const c=$('oc'+i);c.textContent=r.text.length+'/'+OF.MAX_LEN;c.className='cnt'+(r.dropped.length?' over':'');
+    const w=[];
+    if(r.dropped.length)w.push('Won\u2019t fit: '+r.dropped.map(id=>OF.ELEMENTS[id].name).join(', '));
+    const na=osdEdit[i].e.filter(id=>id&&!OF.supported(S,id));
+    if(na.length)w.push(na.map(id=>OF.ELEMENTS[id].name).join(', ')+': not reported by '+camName);
+    $('ow'+i).textContent=w.join(' \u00b7 ');
+  }
+}
+$('revertSlots').onclick=()=>{osdDirty=false;osdLoad();osdPreview();toast('Changes discarded');};
 
 /* ---------- sliders ---------- */
 function fill(r){r.style.setProperty('--p',((r.value-r.min)/(r.max-r.min)*100)+'%');}
@@ -721,9 +954,12 @@ $('saveBeh').onclick=async()=>{
 };
 $('saveSlots').onclick=async()=>{
   try{
-    const body={slot0:+$('sl0').value,slot1:+$('sl1').value,slot2:+$('sl2').value,slot3:+$('sl3').value};
+    if(!osdEdit){toast('Waiting for device status\u2026');return;}
+    const body={};
+    osdEdit.forEach((c,i)=>{body['osd'+i]=c.e.filter(x=>x).join(',');body['lbl'+i]=OF.sanitizeLabel(c.l);});
     const j=await api('/api/settings',body);
-    toast(j.ok?'OSD slots saved':'Error: '+(j.error||'?'));
+    if(j.ok){osdDirty=false;toast('OSD slots saved');}
+    else toast('Error: '+(j.error||'?'));
   }catch(e){console.error('saveSlots error:',e);toast('Error: '+e.message);}
 };
 
@@ -1245,13 +1481,12 @@ function render(){
     $('statecap').textContent=(c.model||c.name||'camera')+' \u00b7 ready';
   }
 
-  /* OSD previews */
+  /* OSD: dashboard shows what the FC was last sent; the OSD tab previews edits */
   const osd=S.osd||['','','',''];
-  const slots=S.slots||[0,0,0,0];
-  for(let i=0;i<4;i++){$('pv'+i).textContent=osd[i]||'\u2014';
-    $('spv'+i).textContent='now: '+(osd[i]||'(blank)');
-    const sel=$('sl'+i);
-    if(document.activeElement!==sel)sel.value=slots[i];}
+  for(let i=0;i<4;i++)$('pv'+i).textContent=osd[i]||'\u2014';
+  osdOptions();
+  if(!osdDirty)osdLoad();
+  osdPreview();
 
   /* KPI cards */
   const b=c.batt;

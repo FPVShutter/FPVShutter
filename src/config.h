@@ -14,7 +14,7 @@
 #include <Arduino.h>
 
 // Firmware version string (shown in UI and OTA status endpoint)
-#define FIRMWARE_VERSION "v2.3"
+#define FIRMWARE_VERSION "v2.4"
 
 // ──────────────────────────────────────────────────────────────────────────────
 // UART / MSP Configuration
@@ -122,7 +122,9 @@
 #define WIFI_AP_DEFAULT_SSID      "FPVShutter"
 #define WIFI_AP_DEFAULT_PASS      "fpvshutter"
 
-// Default content of Betaflight Custom Message slots 1..4 (OsdSlotContent).
+// Default layout of Betaflight Custom Message slots 1..4, given as the
+// classic single-choice presets (OsdSlotContent) — each expands into an
+// element list + label via osdSlotFromLegacy() (osd_format.cpp).
 #define DEFAULT_OSD_SLOT_1        OSD_SLOT_CAM_STATUS
 #define DEFAULT_OSD_SLOT_2        OSD_SLOT_REC_TIME
 #define DEFAULT_OSD_SLOT_3        OSD_SLOT_BATTERY
@@ -193,13 +195,22 @@
 #define DJI_ACTION_REMAIN_POLL_MS   3000   // 02/71 SD card info query (remaining time, standby only)
 #define DJI_ACTION_HEARTBEAT_MS     1000   // 00/2B remote heartbeat (see dji_action_camera.cpp)
 
-// Bench aid for bringing up a new DJI model: log the first occurrence of
-// every distinct inbound DUML frame type (flags/set/id/sender) with a hex
-// dump, once per boot. Cheap (a small table + one DBG line per new type)
-// and invaluable when reading a first hardware session's serial log.
-// Off now that the Action 2 is verified; set to 1 when bringing up another
-// Action model (3/4/5/6) to see what it sends.
+// Bench aid for DUML cameras (dumlFrameLog() in dji_duml_transport.cpp):
+//   0 = off
+//   1 = log the first frame of every distinct inbound type (flags/set/id/
+//       sender) with a hex dump, once per boot
+//   2 = level 1, plus re-log a type whenever its bytes change (ignoring
+//       the sequence number and CRC). Noisy, but change a setting on the
+//       camera (resolution, fps, mode...) and the frame carrying it shows up.
+// Action: off now that the Action 2 is verified; set to 1 when bringing up
+// another Action model (3/4/5/6) to see what it sends.
 #define DJI_ACTION_FRAME_DISCOVERY  0
+// Nano: off — resolution / fps found (02/19 reply, see dji_duml_transport.h).
+#define DJI_NANO_FRAME_DISCOVERY    0
+// How often the Nano backend re-asks for resolution / fps (02/19) in
+// standby. The Nano never pushes it, so a menu change shows up on the OSD
+// within this long. Not polled while recording (it can't change then).
+#define DJI_NANO_FORMAT_POLL_MS     3000
 
 // DJI R SDK cameras (dji_rsdk_camera.cpp): Osmo Action 4 / 5 Pro / 6, Osmo 360.
 // Values marked "DJI demo" are exactly what DJI's official Osmo GPS
@@ -215,7 +226,7 @@
 #define DJI_RSDK_REJECT_BACKOFF_MS  60000
 // Bring-up aid: log the first frame of every distinct R SDK message type with
 // a hex dump. On until the Action 4 backend is hardware-verified.
-#define DJI_RSDK_FRAME_DISCOVERY    1
+#define DJI_RSDK_FRAME_DISCOVERY    0
 
 // BLE connection timeout (milliseconds).
 #define BLE_CONNECT_TIMEOUT_MS    10000

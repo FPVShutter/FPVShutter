@@ -52,20 +52,67 @@ enum BlePowerLevel : uint8_t {
 };
 
 // ──────────────────────────────────────────────────────────────────────────────
-// OSD slot contents (which info goes into Betaflight Custom Message 1..4)
+// OSD elements (building blocks of Betaflight Custom Message 1..4)
 // ──────────────────────────────────────────────────────────────────────────────
+// Each custom-message slot is an optional short label followed by up to
+// OSD_ELEMS_PER_SLOT elements, joined with single spaces and cut to
+// OSD_MAX_TEXT_LEN (whole elements only — one that doesn't fit is dropped,
+// never split). See osd_slots.cpp for the exact text of each element.
+//
+// The numeric IDs are persisted in NVS and used by the Web UI / Bench
+// Console: never renumber, only append. The browser-side preview
+// (web_assets.h and docs/app.js) mirrors this list and the formatter.
 
+#define OSD_ELEMS_PER_SLOT   4
+#define OSD_LABEL_MAX_LEN    6
+
+enum OsdElement : uint8_t {
+    OSD_EL_NONE      = 0,
+    OSD_EL_CAM_STATE = 1,   // "REC" / "STBY" / "CAM OFF" / "CAM SCAN" / "CAM PAIR"
+    OSD_EL_REC_TIME  = 2,   // "12:34" elapsed while recording, "2H33M" remaining in standby
+    OSD_EL_CAM_BATT  = 3,   // "85%"
+    OSD_EL_LINK      = 4,   // "READY" / "PAIR" / "CONN" / "SCAN" / "OFF"
+    OSD_EL_FC_VOLT   = 5,   // "15.8V"
+    OSD_EL_ARM       = 6,   // "ARMED" / "DISARMED" / "FC NOLINK"
+    OSD_EL_MODE      = 7,   // "VIDEO" / "SLOMO" / "HLAPSE" / "PHOTO" ...
+    OSD_EL_RES       = 8,   // "4K" / "2.7K" / "1080P"
+    OSD_EL_ASPECT    = 9,   // "16:9" / "4:3" / "9:16"
+    OSD_EL_FPS       = 10,  // "60FPS"
+    OSD_EL_FORMAT    = 11,  // "4K60" (resolution + fps in one)
+    OSD_EL_EIS       = 12,  // "RS+" / "HS" / "RS" / "HB" / "EIS OFF"
+    OSD_EL_SD_FREE   = 13,  // "112G" / "850M" free on the card
+    OSD_EL_TEMP      = 14,  // "" when normal, "WARM" / "HOT" / "OVERHEAT" as an alert
+
+    OSD_EL_COUNT     = 15,
+};
+
+// Legacy single-choice slot contents (firmware <= v2.3). Still accepted by
+// the settings API as "slotN" and migrated from NVS on first boot — each
+// maps onto an element list + label that renders the same text.
 enum OsdSlotContent : uint8_t {
-    OSD_SLOT_OFF        = 0,   // Leave this custom message untouched/empty
-    OSD_SLOT_CAM_STATUS = 1,   // "REC 85% 12:34" / "STBY ..." (combined)
+    OSD_SLOT_OFF        = 0,
+    OSD_SLOT_CAM_STATUS = 1,   // "REC 85% 12:34" / "STBY 85% 2H33M"
     OSD_SLOT_REC_TIME   = 2,   // "REC 12:34"
     OSD_SLOT_BATTERY    = 3,   // "BAT 85%"
-    OSD_SLOT_LINK       = 4,   // "LINK READY" / "SCAN" / "OFF"
+    OSD_SLOT_LINK       = 4,   // "LINK READY"
     OSD_SLOT_FC_BATT    = 5,   // "FC 15.8V"
     OSD_SLOT_ARM_STATE  = 6,   // "ARMED" / "DISARMED"
 
     OSD_SLOT_COUNT      = 7,
 };
+
+struct OsdSlotConfig {
+    uint8_t elem[OSD_ELEMS_PER_SLOT];     // OsdElement, OSD_EL_NONE = unused
+    char    label[OSD_LABEL_MAX_LEN + 1]; // optional prefix, e.g. "CAM" ("" = none)
+};
+
+/// Fill `out` with the element list + label equivalent to a legacy
+/// OsdSlotContent value (unknown values → empty slot).
+void osdSlotFromLegacy(uint8_t legacy, OsdSlotConfig &out);
+
+/// Make a user-supplied label OSD-safe in place: uppercase, printable ASCII
+/// only (no '"' or '\\' so it can be echoed in JSON), max OSD_LABEL_MAX_LEN.
+void osdSanitizeLabel(char *label);
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Saved camera registry (auto-learned during scans, persisted)
@@ -96,7 +143,7 @@ struct ShutterSettings {
                                      // (otherwise filters by MAC OUI / name / mfr)
     char       apSsid[33];           // SoftAP SSID for the Web UI
     char       apPass[65];           // SoftAP password (min 8 chars, or empty = open)
-    uint8_t    osdSlot[4];           // OsdSlotContent for Custom Message 1..4
+    OsdSlotConfig osd[4];            // Custom Message 1..4 layout (elements + label)
     uint8_t    wifiSwitchCh;         // Optional RC channel toggling Wi-Fi (255 =
                                      // no AUX toggle configured). Only takes
                                      // effect while wifiApEnabled is true — see

@@ -45,6 +45,7 @@ int main(){
   uint8_t st[38]={0}; st[0]=1; st[1]=1; st[2]=16; st[3]=6; st[23]=0xE4; st[24]=0x02; st[37]=77; st[15]=0x10; st[16]=0x27;
   camSend(0x00,7,0x1D02,st,38);
   auto&t=djiRsdkGetTelemetry(); CHECK(t.dataValid && t.state==CAM_STATE_STANDBY && t.recTimeSeconds==740 && t.batteryPercent==77 && t.storageRaw==10000);
+  CHECK(!strcmp(t.modeLabel,"VIDEO") && !strcmp(t.resLabel,"4K") && !strcmp(t.aspectLabel,"16:9") && t.fps==60 && !strcmp(t.eisLabel,"OFF") && t.freeMb==10000 && t.tempState==0);
   CHECK(djiRsdkSendStartRecord()); CHECK(lastWrite(f) && f.key()==0x1D03 && f.payload[4]==0 && f.payload[2]==0xFF && f.payload[3]==0x33);
   st[1]=3; st[5]=12; camSend(0x00,8,0x1D02,st,38); CHECK(t.state==CAM_STATE_RECORDING && t.recTimeSeconds==12);
   CHECK(djiRsdkSendStopRecord()); CHECK(lastWrite(f) && f.payload[4]==1);

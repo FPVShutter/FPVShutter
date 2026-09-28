@@ -277,7 +277,7 @@ static void dispatchLine(Print &out, const String &line, bool viaFcUart) {
         out.println(resp);
 
     } else if (path == "status") {
-        static char buf[2200];
+        static char buf[3072];
         apiBuildStatusJson(buf, sizeof(buf));
         out.println(buf);
 
@@ -396,4 +396,4 @@ bool serialConfigFcUartActive() {
     // one step takes.
     if (_otaActive) return true;
     return _lastFcUartCmdMs != 0 && (millis() - _lastFcUartCmdMs) < FC_UART_BENCH_IDLE_MS;
-}
+}

@@ -53,6 +53,7 @@
       <a href="#web-serial-protocol">Web Serial protocol</a>
       <a href="#betaflight-passthrough">FC-UART passthrough</a>
       <a href="#camera-protocols">Camera BLE protocols</a>
+      <a href="#osd-elements">OSD elements</a>
       <a href="#rest-api">REST API</a>
       <a href="#configuration">Configuration defaults</a>
       <a href="#repository-structure">Repository structure</a>
@@ -71,7 +72,7 @@
           <li><strong>ESP32 → Camera:</strong> desired-recording = switch ON OR (record-on-arm AND armed).
             On transitions it sends the camera's absolute start/stop command over BLE. Manual buttons in
             either Web UI do the same.</li>
-          <li><strong>Camera → OSD:</strong> up to four independent strings pushed on change (checked
+          <li><strong>Camera → OSD:</strong> up to four independent strings (each a label plus up to four <a href="#osd-elements">OSD elements</a>) pushed on change (checked
             every 500&nbsp;ms) into Betaflight Custom Messages 1–4 via <code>MSP2_SET_TEXT</code>.</li>
           <li><strong>Web UI:</strong> the ESP32 runs a SoftAP (default SSID <code>FPVShutter</code>,
             password <code>fpvshutter</code>). Browse to <code>http://192.168.4.1</code>.</li>
@@ -212,7 +213,7 @@
         <div class="table-wrap">
           <table>
             <tr><th>Camera</th><th>Backend</th><th>Record control</th><th>Telemetry</th><th>Status</th></tr>
-            <tr><td>DJI Osmo Nano</td><td><code>dji_nano_camera</code></td><td>yes</td><td>battery %, rec state, elapsed / remaining time (camera pushes it)</td><td><strong>Tested on hardware</strong></td></tr>
+            <tr><td>DJI Osmo Nano</td><td><code>dji_nano_camera</code></td><td>yes</td><td>battery %, rec state, elapsed / remaining time (camera pushes it), mode / resolution / fps (queried)</td><td><strong>Tested on hardware</strong></td></tr>
             <tr><td>DJI Osmo Action 2</td><td><code>dji_action_camera</code></td><td>yes</td><td>battery %, rec state, elapsed / remaining time (polled from the camera)</td><td><strong>Tested on hardware</strong></td></tr>
             <tr><td>DJI Osmo Action 4</td><td><code>dji_rsdk_camera</code></td><td>yes</td><td>battery %, rec state, elapsed / remaining time, SD free space, mode / resolution / fps (camera pushes it)</td><td><strong>Tested on hardware</strong></td></tr>
             <tr><td>DJI Osmo Action 5 Pro / 6, Osmo 360</td><td><code>dji_rsdk_camera</code></td><td>expected (same protocol as the Action 4)</td><td>expected</td><td>Not tested</td></tr>
@@ -240,18 +241,42 @@
             <tr><td>Battery %</td><td><code>0D/02</code> push, <code>pData[31]</code></td><td><code>0D/02</code> query to <code>0x05</code> every 5&nbsp;s, reply <code>pData[32]</code></td></tr>
             <tr><td>Remaining time (standby)</td><td><code>02/80</code> push, <code>pData[28:29]</code></td><td><code>02/71</code> SD-card-info query every 3&nbsp;s, reply <code>pData[25:28]</code> (seconds)</td></tr>
             <tr><td>Elapsed time (recording)</td><td>counted locally</td><td>counted locally</td></tr>
+            <tr><td>Resolution / fps</td><td><code>02/19</code> query every 3&nbsp;s in standby (see below)</td><td>not yet (the same query may work)</td></tr>
+            <tr><td>Camera mode</td><td><code>02/80</code> + <code>02/19</code> + <code>02/6D</code> (see below)</td><td>—</td></tr>
           </table>
         </div>
+        <p>Camera mode on the Nano comes from three sources, because no single message tells all the modes apart:</p>
+        <div class="table-wrap">
+          <table>
+            <tr><th>OSD shows</th><th>How it's recognised</th></tr>
+            <tr><td><code>VIDEO</code></td><td><code>02/19</code> last byte <code>00</code></td></tr>
+            <tr><td><code>SLOMO</code></td><td><code>02/19</code> last byte <code>04</code> and fps above 60 (1080p 120/240, 2.7K 120, 4K 120)</td></tr>
+            <tr><td><code>TLAPSE</code></td><td><code>02/19</code> last byte <code>04</code>, and <code>02/6D</code> answers with data, mode <code>04</code> (the <code>02/80</code> push calls timelapse "photo", so this is checked first)</td></tr>
+            <tr><td><code>HLAPSE</code></td><td><code>02/19</code> last byte <code>04</code>, and <code>02/6D</code> answers with data, mode <code>0B</code> (the speed Auto / ×5 / ×10 / ×15 / ×30 follows it)</td></tr>
+            <tr><td><code>NIGHT</code></td><td><code>02/19</code> last byte <code>04</code>, and <code>02/6D</code> only sends its short ack (SuperNight is capped at 30&nbsp;fps)</td></tr>
+            <tr><td><code>PHOTO</code></td><td><code>02/80</code> push, <code>pData[15]</code> = <code>00</code></td></tr>
+          </table>
+        </div>
+        <p><code>02/19</code> (Video Format Get) and <code>02/6D</code> (Video Record Mode Get) are sent from app
+          <code>0x02</code> to camera <code>0x01</code> with flags <code>0x20</code> and an empty payload. The camera
+          answers with a short ack (payload <code>01</code>) and then the data. <code>02/19</code>'s data is
+          <code>00 | resolution | fps index | 00 00 | 00 or 04</code>, using the same resolution / fps numbers as DJI's
+          R SDK status push (e.g. <code>10 06</code> = 4K 16:9 60&nbsp;fps, <code>5F 05</code> = 2.7K 4:3 50&nbsp;fps).
+          It's polled every <code>DJI_NANO_FORMAT_POLL_MS</code> (3&nbsp;s) in standby, and <code>02/6D</code> is only
+          added while a 30&nbsp;fps special mode is active. Neither is polled while recording, since the format
+          can't change mid-clip.</p>
         <p>Keeping the link alive also differs. The Nano's constant pushes prove it's connected. The
           Action 2 backend sends DJI's remote heartbeat (<code>00/2B</code> <code>{01 01}</code> to
           <code>0xF0</code>, plus an empty <code>00/00</code> to <code>0x28</code>) every second. If the
           camera goes quiet for 15&nbsp;s while Bluetooth is still up, it first re-sends the pairing
           request in place (the camera answers "already paired"), and only falls back to a full reconnect
           if that gets no reply within 5&nbsp;s.</p>
-        <p>Bringing up another Action model? Set <code>DJI_ACTION_FRAME_DISCOVERY</code> to 1 in
-          <code>config.h</code> and the firmware logs the first frame of every new kind of camera message
-          as a hex dump on the USB serial monitor. One test session's log is usually enough to see what
-          that camera sends.</p>
+        <p>Bringing up another model? Set <code>DJI_ACTION_FRAME_DISCOVERY</code> or
+          <code>DJI_NANO_FRAME_DISCOVERY</code> to 1 in <code>config.h</code> and the firmware logs the first frame
+          of every new kind of camera message as a hex dump on the USB serial monitor. One test session's log is
+          usually enough to see what that camera sends. Level 2 also re-logs a message whenever its bytes change:
+          change a setting on the camera and the frame that carries it shows up. That's how the Nano's
+          <code>02/19</code> and <code>02/6D</code> fields were found.</p>
         <h3>DJI Osmo Action 4 / 5 Pro / 6 (DJI R SDK over BLE)</h3>
         <p>Same GATT service as the DUML cameras (<code>0xFFF0</code>: write <code>0xFFF5</code>, notify
           <code>0xFFF4</code>), different protocol on top: DJI's official remote protocol, documented in
@@ -290,13 +315,48 @@
           are not supported.</p>
       </section>
 
+      <section class="section" id="osd-elements">
+        <h2>OSD elements</h2>
+        <p>Each Custom Message is an optional label (up to 6 characters) followed by up to four
+          elements, joined with single spaces. Betaflight allows 16 characters per message; an element
+          that doesn't fit whole is dropped along with the ones after it, and the editors flag it. All
+          text is uppercase because Betaflight OSD fonts have icons, not letters, in the lowercase range.</p>
+        <div class="table-wrap">
+          <table>
+            <tr><th>Id</th><th>Element</th><th>Example</th><th>Nano</th><th>Action 2</th><th>Action 4+</th><th>GoPro</th></tr>
+            <tr><td>1</td><td>Camera state</td><td><code>REC / STBY / CAM OFF</code></td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr>
+            <tr><td>2</td><td>Record time</td><td><code>12:34 (elapsed) / 2H33M (remaining)</code></td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr>
+            <tr><td>3</td><td>Camera battery</td><td><code>85%</code></td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr>
+            <tr><td>4</td><td>Link state</td><td><code>READY / SCAN / OFF</code></td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr>
+            <tr><td>5</td><td>FC voltage</td><td><code>15.8V</code></td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr>
+            <tr><td>6</td><td>Arm state</td><td><code>ARMED / DISARMED</code></td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr>
+            <tr><td>7</td><td>Camera mode</td><td><code>VIDEO / SLOMO / NIGHT / TLAPSE / HLAPSE / PHOTO</code></td><td>✓</td><td></td><td>✓</td><td></td></tr>
+            <tr><td>8</td><td>Resolution</td><td><code>4K / 2.7K / 1080P</code></td><td>✓</td><td></td><td>✓</td><td></td></tr>
+            <tr><td>9</td><td>Aspect ratio</td><td><code>16:9 / 4:3</code></td><td>✓</td><td></td><td>✓</td><td></td></tr>
+            <tr><td>10</td><td>Frame rate</td><td><code>60FPS</code></td><td>✓</td><td></td><td>✓</td><td></td></tr>
+            <tr><td>11</td><td>Res + fps</td><td><code>4K60</code></td><td>✓</td><td></td><td>✓</td><td></td></tr>
+            <tr><td>12</td><td>Stabilisation</td><td><code>RS+ / HS / EIS OFF</code></td><td></td><td></td><td>✓</td><td></td></tr>
+            <tr><td>13</td><td>Card free</td><td><code>112G / 850M</code></td><td></td><td>✓</td><td>✓</td><td></td></tr>
+            <tr><td>14</td><td>Overheat alert</td><td><code>HOT (blank when normal)</code></td><td></td><td></td><td>✓</td><td></td></tr>
+          </table>
+        </div>
+        <p>Elements a camera doesn't report show <code>--</code> (marked <strong>n/a</strong> in the
+          editors). When a slot contains Camera state or Link state, camera-data elements hide while the
+          camera is disconnected, so the slot reads <code>CAM OFF</code> rather than
+          <code>CAM OFF --% --:--</code>. Layouts saved by firmware v2.3 and earlier are migrated on first
+          boot. The formatter is <code>src/osd_format.cpp</code>, mirrored for the previews in
+          <code>docs/osd-format.js</code> and inside <code>src/web_assets.h</code>;
+          <code>sh tools/osd_host_test/run.sh</code> (needs <code>g++</code> and <code>node</code>) checks all
+          three produce identical text.</p>
+      </section>
+
       <section class="section" id="rest-api">
         <h2>REST API (used by the field Web UI)</h2>
         <div class="table-wrap">
           <table>
             <tr><th>Endpoint</th><th>Purpose</th></tr>
             <tr><td><code>GET /api/status</code></td><td>Live telemetry snapshot (JSON)</td></tr>
-            <tr><td><code>POST /api/settings</code></td><td>Update + persist settings. Keys: <code>camera</code> (0 Nano, 1 GoPro, 2 Action 2, 3 Action 4+), <code>auxChannel</code>, <code>threshold</code>, <code>debounce</code>, <code>recordOnArm</code>, <code>stopOnDisarm</code>, <code>stopOnDisarmDelay</code>, <code>scanAll</code>, <code>wifiSwitch</code>, <code>wifiApEnabled</code>, <code>blePower</code> (0–2), <code>slot0</code>–<code>slot3</code>, <code>ssid</code>, <code>pass</code></td></tr>
+            <tr><td><code>POST /api/settings</code></td><td>Update + persist settings. Keys: <code>camera</code> (0 Nano, 1 GoPro, 2 Action 2, 3 Action 4+), <code>auxChannel</code>, <code>threshold</code>, <code>debounce</code>, <code>recordOnArm</code>, <code>stopOnDisarm</code>, <code>stopOnDisarmDelay</code>, <code>scanAll</code>, <code>wifiSwitch</code>, <code>wifiApEnabled</code>, <code>blePower</code> (0–2), <code>osd0</code>–<code>osd3</code> (comma-separated OSD element ids, e.g. <code>"1,3,2"</code>), <code>lbl0</code>–<code>lbl3</code> (label, max 6 chars), <code>slot0</code>–<code>slot3</code> (legacy presets), <code>ssid</code>, <code>pass</code></td></tr>
             <tr><td><code>POST /api/camera</code></td><td><code>{"scan":true}</code> | <code>{"pair":{"mac":"MAC","type":0|1|2|3}}</code> | <code>{"select":i}</code> | <code>{"remove":i}</code></td></tr>
             <tr><td><code>POST /api/command</code></td><td><code>{"cmd":"start"|"stop"|"reboot"}</code></td></tr>
             <tr><td><code>POST /api/msp</code></td><td>Read-only allowlisted MSP passthrough</td></tr>
@@ -328,13 +388,15 @@
             <tr><td><code>DEFAULT_WIFI_AP_ENABLED</code></td><td>true</td><td>Master Wi-Fi AP switch (false = AP never starts)</td></tr>
             <tr><td><code>DEFAULT_BLE_POWER</code></td><td>BLE_POWER_HIGH</td><td>Bluetooth TX power (Low / Medium / High)</td></tr>
             <tr><td><code>DJI_ACTION_STATUS_POLL_MS</code> / <code>_BATTERY_POLL_MS</code> / <code>_REMAIN_POLL_MS</code></td><td>500 / 5000 / 3000</td><td>Action 2 telemetry query intervals</td></tr>
-            <tr><td><code>DJI_ACTION_FRAME_DISCOVERY</code></td><td>0</td><td>Set to 1 to log each new DUML message type from an Action camera once (bench aid)</td></tr>
+            <tr><td><code>DJI_ACTION_FRAME_DISCOVERY</code></td><td>0</td><td>Action bench aid: 1 = log each new DUML message type once, 2 = also re-log a type when its bytes change</td></tr>
+            <tr><td><code>DJI_NANO_FRAME_DISCOVERY</code></td><td>0</td><td>Same for the Osmo Nano</td></tr>
+            <tr><td><code>DJI_NANO_FORMAT_POLL_MS</code></td><td>3000</td><td>How often the Nano is asked for resolution / fps (<code>02/19</code>) in standby</td></tr>
             <tr><td><code>DJI_RSDK_VERIFY_MODE</code></td><td>0</td><td>Action 4+ pairing: 0 = camera prompts only if it doesn't know this ESP32, 1 = prompt every connect</td></tr>
             <tr><td><code>DJI_RSDK_FRAME_DISCOVERY</code></td><td>1</td><td>Log each new R SDK message type from an Action 4+ once (bench aid)</td></tr>
             <tr><td><code>FC_UART_BENCH_IDLE_MS</code></td><td>8000</td><td>How long MSP polling / OSD pushes stay paused after the last bench command over the FC UART</td></tr>
             <tr><td><code>OTA_CHUNK_MAX_BYTES</code></td><td>256</td><td>Raw bytes per Web Serial OTA chunk (keep in sync with <code>docs/app.js</code>)</td></tr>
             <tr><td><code>WIFI_AP_DEFAULT_SSID</code> / <code>_PASS</code></td><td>FPVShutter / fpvshutter</td><td>Web UI hotspot</td></tr>
-            <tr><td><code>DEFAULT_OSD_SLOT_1..4</code></td><td>status/time/batt/link</td><td>Custom Message contents</td></tr>
+            <tr><td><code>DEFAULT_OSD_SLOT_1..4</code></td><td>status/time/batt/link</td><td>Default Custom Message layouts (classic presets, expanded into elements)</td></tr>
             <tr><td><code>STATUS_LED_PIN</code></td><td>8</td><td>Onboard LED</td></tr>
           </table>
         </div>
@@ -380,7 +442,8 @@
     │                           #   list + NVS "saved" list (Pair & Save only;
     │                           #   kills the ghost-device bug; max 4 saved)
     ├── recorder.h/.cpp      # Switch/arm/manual -> record decision engine
-    ├── osd_slots.h/.cpp     # Custom Message 1-4 content manager
+    ├── osd_slots.h/.cpp     # Custom Message 1-4 push loop (MSP2_SET_TEXT)
+    ├── osd_format.h/.cpp    # OSD element text formatter (mirrored in docs/osd-format.js)
     ├── wifiswitch.h/.cpp    # AUX-switch power control for the Wi-Fi AP
     ├── json_scan.h/.cpp     # Tiny flat-JSON reader shared by both transports
     ├── api_core.h/.cpp      # Transport-agnostic status/settings/camera/
@@ -421,6 +484,8 @@
           <li>✅ Wi-Fi power switch on a spare AUX channel</li>
           <li>✅ Web Serial Configurator (GitHub Pages, USB transport)</li>
           <li>✅ OSD live preview in the Configurator (real Betaflight OSD font)</li>
+          <li>✅ Modular OSD: label + up to 4 elements per Custom Message, client-side preview in both UIs</li>
+          <li>✅ Osmo Nano resolution / fps and camera mode (video, slo-mo, SuperNight, timelapse, hyperlapse, photo), queried with DUML <code>02/19</code> + <code>02/6D</code> — tested on hardware</li>
           <li>✅ Full DJI telemetry parse (battery %, rec time from DUML notifications, tested with Osmo Nano)</li>
           <li>✅ Separate Osmo Nano / Osmo Action backends on a shared DUML transport</li>
           <li>✅ Osmo Action 2 support (polled status, battery and remaining time, heartbeat, in-place
@@ -430,6 +495,7 @@
           <li>✅ Wi-Fi AP master switch + Bluetooth TX power setting (Web UI + Configurator)</li>
           <li>✅ OTA firmware flashing over Web Serial, including through Betaflight passthrough</li>
           <li>⬜ Osmo Action 4+ Bluetooth wake-from-sleep (DJI's <code>WKP</code> advert) for arm-to-record</li>
+          <li>⬜ Resolution / fps for the Action 2 (try the same <code>02/19</code> query)</li>
           <li>⬜ Non-blocking BLE connect (no loop stall while a saved camera is off)</li>
           <li>⬜ Lightweight MSP config panel ("configurator-lite" subtab)</li>
           <li>⬜ Profiles, camera configuration</li>
