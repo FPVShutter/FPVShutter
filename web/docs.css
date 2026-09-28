@@ -1,0 +1,166 @@
+/* ============================================================================
+   docs.css: Tailwind entry for the docs site (GitHub Pages, /docs).
+
+   Compiled to docs/assets/site.css by `npm run build:web`. Tailwind scans the
+   docs pages and the configurator script and emits only what they use.
+
+   Page chrome (header, nav, footer, hero) is written with utility classes in
+   the HTML. Long-form content pages keep plain semantic markup (h2, p, table,
+   pre…) inside <main class="doc">, styled once below, plus a handful of
+   content components (notice, step, feature…) shared by several pages.
+   The configurator (console.html + app.js) builds DOM from JS, so its
+   pieces are components too.
+============================================================================ */
+
+@import "tailwindcss" source(none);
+@import "./theme.css";
+@source "../docs/*.html";
+@source "../docs/app.js";
+
+@layer base {
+  html { @apply scroll-smooth; }
+  body { @apply leading-relaxed; }
+  a { @apply text-accent; }
+  [hidden] { display: none !important; }
+}
+
+@layer components {
+  /* ---------- chrome ---------- */
+  .iconbtn { @apply grid size-9 shrink-0 cursor-pointer place-items-center rounded-lg border border-line bg-raised text-fg transition-colors hover:border-faint; }
+  .iconbtn > svg { @apply size-[18px]; }
+  .site-nav a { @apply rounded-lg px-3 py-2 text-sm font-semibold whitespace-nowrap text-muted no-underline transition-colors hover:bg-raised hover:text-fg; }
+  .site-nav a.active { @apply bg-raised text-fg; }
+
+  /* ---------- buttons ---------- */
+  .btn {
+    @apply inline-flex cursor-pointer items-center gap-2 rounded-lg border border-line bg-raised px-5 py-3 text-sm font-semibold text-fg no-underline transition-colors hover:border-faint disabled:cursor-not-allowed disabled:opacity-40;
+    &.primary { @apply border-transparent bg-accent text-on-accent hover:opacity-90; }
+    &.danger { @apply border-rec/40 bg-transparent text-rec hover:bg-rec/10; }
+    &.small { @apply px-3 py-1.5 text-xs; }
+  }
+
+  /* ---------- long-form content ---------- */
+  .doc {
+    & h1 { @apply mb-3.5 text-[clamp(1.75rem,5vw,2.6rem)] leading-tight font-extrabold tracking-tight; }
+    & h2 { @apply mb-4 scroll-mt-24 text-2xl font-extrabold tracking-tight; }
+    & h3 { @apply mt-6 mb-2.5 text-base font-bold; }
+    & p, & li { @apply max-w-[70ch] text-muted; }
+    & p { @apply my-3; }
+    & ul, & ol { @apply my-3 space-y-1 pl-6; }
+    & ul { @apply list-disc; }
+    & ol { @apply list-decimal; }
+    & li::marker { @apply text-faint; }
+    & strong { @apply text-fg; }
+    & code { @apply rounded bg-raised px-1.5 py-0.5 text-[.88em] text-fg; }
+    & pre { @apply my-4 overflow-x-auto rounded-xl border border-line bg-surface px-4 py-3.5 text-[13px] leading-normal; }
+    & pre code { @apply bg-transparent p-0; }
+    & table { @apply my-3.5 w-full min-w-[420px] border-collapse text-sm; }
+    & th, & td { @apply border-b border-line px-3.5 py-2.5 text-left align-top first:pl-0; }
+    & tr:last-child td { @apply border-b-0; }
+    & th { @apply text-[11px] font-bold tracking-wider text-muted uppercase; }
+    & .lead { @apply text-lg text-fg; }
+  }
+  .section { @apply my-11 first:mt-5; }
+  .table-wrap { @apply overflow-x-auto rounded-xl border border-line bg-surface px-4 py-1; }
+  .grid-auto { @apply grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-4; }
+  .grid-auto.cols-4 { @apply grid-cols-1 sm:grid-cols-2 lg:grid-cols-4; }
+  .grid-auto.cols-2 { @apply grid-cols-[repeat(auto-fit,minmax(min(320px,100%),1fr))]; }
+  .muted { @apply text-muted; }
+
+  .notice {
+    @apply my-5 flex gap-3 rounded-xl border border-warn/35 bg-warn/8 px-4.5 py-4 text-sm;
+    & > svg { @apply mt-0.5 size-5 shrink-0 text-warn; }
+    & p { @apply m-0 max-w-none text-fg; }
+    &.ok { @apply border-ok/30 bg-ok/8; & > svg { @apply text-ok; } }
+    &.err { @apply border-rec/30 bg-rec/8; & > svg { @apply text-rec; } }
+  }
+
+  .feature {
+    @apply block rounded-2xl border border-line bg-surface p-5.5 no-underline transition-colors;
+    & .ic { @apply mb-3.5 size-8 text-accent; }
+    & h3 { @apply mt-0 mb-2 text-[15px] text-fg; }
+    & p { @apply m-0 max-w-none text-sm; }
+  }
+  a.feature:hover { @apply border-accent/50; }
+
+  .step {
+    @apply flex gap-4.5 border-t border-dashed border-line py-6 first-of-type:border-t-0;
+    & .num { @apply grid size-9 shrink-0 place-items-center rounded-full bg-accent text-[15px] font-extrabold text-on-accent; }
+    & .body { @apply min-w-0 flex-1; }
+    & h3 { @apply mt-1.5 mb-2 text-lg; }
+  }
+
+  .with-toc { @apply grid items-start gap-10 md:grid-cols-[200px_1fr]; & > * { @apply min-w-0; } }
+  .toc {
+    @apply flex flex-wrap gap-0.5 text-[13px] md:sticky md:top-24 md:flex-col;
+    & a { @apply rounded-lg px-2.5 py-1.5 text-muted no-underline transition-colors hover:bg-raised hover:text-fg; }
+    & a.active { @apply bg-raised font-bold text-accent; }
+  }
+
+  .flow {
+    @apply my-2.5 flex flex-col items-stretch gap-2.5 md:flex-row;
+    & .node { @apply flex-1 rounded-xl border border-line bg-surface p-4 text-center; }
+    & .node b { @apply mb-1 block text-sm; }
+    & .node span { @apply text-xs text-muted; }
+    & .arrow { @apply flex rotate-90 items-center justify-center text-faint md:rotate-0; }
+  }
+
+  /* ---------- configurator (console.html / app.js) ---------- */
+  .cfg {
+    & label { @apply mt-2.5 mb-1 block text-xs font-semibold text-muted; }
+    & input[type=text], & input[type=number], & select {
+      @apply w-full rounded-lg border border-line bg-raised px-3 py-2 text-[13px] text-fg outline-none transition-colors focus:border-accent;
+    }
+    & input[type=file] { @apply block w-full text-[13px] text-muted file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-raised file:px-3 file:py-1.5 file:text-[13px] file:font-semibold file:text-fg; }
+    & h2 { @apply mb-3 text-[15px] font-bold; }
+    & h3 { @apply mt-4 mb-1.5 text-[11px] font-bold tracking-wider text-muted uppercase; }
+  }
+  .cfg .btn { @apply px-3.5 py-2 text-[13px]; }
+  .cfg .btn.small { @apply px-3 py-1.5 text-xs; }
+  #app[aria-disabled=true] .card:not(.wide) { @apply pointer-events-none opacity-50; }
+  .card { @apply rounded-2xl border border-line bg-surface p-5; }
+  .card.wide { @apply col-span-full; }
+  .row { @apply mt-3 flex flex-wrap items-center gap-2.5; }
+  .switch-label { @apply mt-2! flex! items-center gap-1.5 text-[13px]! text-fg!; }
+  .switch-label input { @apply size-4 accent-accent; }
+  .hint { @apply mt-2.5 text-xs text-muted; }
+  .dot { @apply size-2.5 shrink-0 rounded-full bg-rec ring-3 ring-rec/20 transition-colors; }
+  .dot.connected { @apply bg-ok ring-ok/20; }
+  .status-grid { @apply grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-2.5; }
+  .stat { @apply flex flex-col gap-0.5 rounded-xl border border-line bg-raised px-3 py-2.5; }
+  .stat .label { @apply text-[10px] font-bold tracking-wider text-muted uppercase; }
+  .stat .value { @apply font-mono text-sm font-bold break-words; }
+  .error-stat .value { @apply font-sans text-xs font-semibold text-rec; }
+  .list {
+    @apply m-0 flex list-none flex-col gap-1.5 p-0;
+    & li { @apply flex items-center justify-between gap-2 rounded-xl border border-line bg-raised px-3 py-2 text-xs; }
+    & li.active { @apply border-accent; }
+    & .cam-name { @apply font-bold; }
+    & .cam-meta { @apply text-muted; }
+    & .cam-actions { @apply flex gap-1.5; }
+  }
+  .osd-slots { @apply mb-3 grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-4; }
+  .osd-slot {
+    @apply flex min-w-0 flex-col gap-1.5;
+    & .osd-head { @apply flex items-center gap-2 text-[13px] font-bold; }
+    & .osd-head input { @apply w-24! px-2! py-1.5! font-mono uppercase; }
+    & .osd-count { @apply ml-auto font-mono text-xs font-normal text-muted; }
+    & .osd-count.over, & .osd-warn { @apply text-warn; }
+    & .osd-els { @apply grid grid-cols-2 gap-1.5; }
+    & .osd-els select { @apply min-w-0 px-2! py-1.5!; }
+    & .osd-warn { @apply text-xs empty:hidden; }
+    /* Rendered through the real Betaflight font by app.js: keep it crisp */
+    & canvas.osd-preview { @apply mt-1.5 block h-auto w-full rounded border border-line bg-black px-1 py-0.5 [image-rendering:pixelated]; }
+  }
+  .osd-src { @apply mb-2.5 flex! items-center gap-2 whitespace-nowrap; & select { @apply w-auto! max-w-80 min-w-0 flex-1; } }
+  .log {
+    @apply mt-2.5 h-60 overflow-y-auto rounded-xl border border-line bg-raised p-3 font-mono text-xs break-words whitespace-pre-wrap;
+    & .log-dbg { @apply text-muted; }
+    & .log-json { @apply text-ok; }
+    & .err { @apply text-rec; }
+  }
+  .small-pre { @apply mt-2 mb-0 font-mono text-xs break-words whitespace-pre-wrap; }
+  .ota-progress { @apply mt-3 h-2 overflow-hidden rounded-full bg-line; }
+  .ota-progress-bar { @apply h-full w-0 bg-accent transition-[width] duration-200; }
+  .ota-status { @apply mt-2 mb-0 min-h-[1.4em] text-xs; }
+}

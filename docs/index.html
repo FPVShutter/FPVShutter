@@ -5,11 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FPVShutter — Open-source CamLink alternative for Betaflight</title>
 <meta name="description" content="FPVShutter is an open-source ESP32-C3 BLE bridge that turns an RC switch into record control for DJI Osmo Nano, DJI Osmo Action 2, DJI Osmo Action 4 and GoPro cameras, with live telemetry pushed into the Betaflight OSD.">
-<script>(function(){try{var t=localStorage.getItem('fpvshutter.theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<script>try{document.documentElement.setAttribute('data-theme',localStorage.getItem('fpvshutter.theme')||(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'))}catch(e){}</script>
 <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
-<div class="bg"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
 <svg width="0" height="0" style="position:absolute">
 <defs>
 <symbol id="i-aperture" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 3.5 L15.8 9.8 M20.9 9.4 L13.4 10.9 M17.8 19.4 L12.9 13.1 M6.4 19 L10.6 12.9 M3.2 10.2 L10.5 11.4 M8 4.9 L11.4 11" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".85"/><circle cx="12" cy="12" r="3.1" fill="currentColor" opacity=".22"/></symbol>
@@ -29,41 +28,43 @@
 </defs>
 </svg>
 
-<header class="site-header glass">
-  <a href="index.html" class="brand">
-    <svg><use href="#i-aperture"/></svg>
-    <span class="name">FPVShutter<span class="sub">Betaflight Cam Control</span></span>
-  </a>
-  <button class="iconbtn" id="navToggle" aria-label="Toggle menu"><svg><use href="#i-menu"/></svg></button>
-  <nav class="site-nav">
-    <a href="index.html">Home</a>
-    <a href="setup.html">Setup Guide</a>
-    <a href="webui.html">Web UI Guide</a>
-    <a href="console.html">Configurator</a>
-    <a href="reference.html">Reference</a>
-  </nav>
-  <div class="header-actions">
-    <button class="iconbtn" id="themeBtn" title="Toggle theme"><svg id="themeIco"><use href="#i-moon"/></svg></button>
-    <a class="iconbtn" href="https://github.com/FPVShutter/FPVShutter" target="_blank" rel="noopener" title="View on GitHub"><svg><use href="#i-github"/></svg></a>
+<header class="sticky top-0 z-20 border-b border-line bg-surface">
+  <div class="relative mx-auto flex max-w-full items-center gap-4 px-5 py-3">
+    <a href="index.html" class="flex shrink-0 items-center gap-2.5 text-fg no-underline">
+      <svg class="size-7 text-accent"><use href="#i-aperture"/></svg>
+      <span class="leading-tight"><span class="block text-lg font-bold">FPVShutter</span><span class="block text-[10px] font-semibold tracking-[.16em] text-muted uppercase">Betaflight Cam Control</span></span>
+    </a>
+    <nav class="site-nav absolute inset-x-3 top-full mt-2 hidden flex-col gap-0.5 rounded-xl border border-line bg-surface p-2 [&.open]:flex md:static md:mt-0 md:flex md:flex-row md:border-0 md:bg-transparent md:p-0">
+      <a href="index.html">Home</a>
+      <a href="setup.html">Setup Guide</a>
+      <a href="webui.html">Web UI Guide</a>
+      <a href="console.html">Configurator</a>
+      <a href="reference.html">Reference</a>
+    </nav>
+    <div class="ml-auto flex items-center gap-2">
+      <button class="iconbtn md:hidden" id="navToggle" aria-label="Toggle menu"><svg><use href="#i-menu"/></svg></button>
+      <button class="iconbtn" id="themeBtn" title="Toggle theme" aria-label="Toggle theme"><svg><use id="themeIco" href="#i-moon"/></svg></button>
+      <a class="iconbtn" href="https://github.com/FPVShutter/FPVShutter" target="_blank" rel="noopener" title="View on GitHub" aria-label="View on GitHub"><svg><use href="#i-github"/></svg></a>
+    </div>
   </div>
 </header>
 
-<main class="page">
+<main class="doc mx-auto max-w-6xl px-5 pt-2 pb-16">
 
-  <section class="hero">
-    <h1>FPVShutter</h1>
-    <h2>Record control &amp; OSD telemetry for your FPV camera</h2>
-    <span class="eyebrow">Open source · MIT licensed</span>
-    <p class="sub">FPVShutter is a free, open-source alternative to the itsFPV CamLink. An ESP32-C3
+  <section class="px-5 pt-14 pb-5 text-center">
+    <span class="mb-5 inline-flex items-center rounded-full border border-line bg-surface px-3.5 py-1.5 text-xs font-bold tracking-wider text-accent uppercase">Open source · MIT licensed</span>
+    <h1 class="mx-auto max-w-[16ch]">FPVShutter</h1>
+    <h2 class="mb-4 text-xl font-bold text-fg">Record control &amp; OSD telemetry for your FPV camera</h2>
+    <p class="mx-auto mb-3 max-w-[56ch] text-lg">FPVShutter is a free, open-source alternative to the itsFPV CamLink. An ESP32-C3
       bridges your radio switch (or arming state) straight to a DJI Osmo Nano, DJI Osmo Action 2, DJI Osmo Action 4 or GoPro camera over
       Bluetooth, and pushes live camera telemetry into the Betaflight OSD.</p>
-    <p class="sub" style="font-size:13.5px;margin-top:-14px">FPVShutter is based on <a href="https://github.com/rover1312/shutterlink" target="_blank" rel="noopener">rover1312/shutterlink</a>, with additional changes and camera-backend work.</p>
-    <div class="hero-ctas">
-      <a class="btn primary" href="setup.html">Get started <svg width="15" height="15"><use href="#i-arrow"/></svg></a>
+    <p class="mx-auto mb-8 max-w-[56ch] text-sm">FPVShutter is based on <a href="https://github.com/rover1312/shutterlink" target="_blank" rel="noopener">rover1312/shutterlink</a>, with additional changes and camera-backend work.</p>
+    <div class="mb-4 flex flex-wrap justify-center gap-3">
+      <a class="btn primary" href="setup.html">Get started <svg class="size-4"><use href="#i-arrow"/></svg></a>
       <a class="btn" href="https://github.com/FPVShutter/FPVShutter" target="_blank" rel="noopener">View on GitHub</a>
       <a class="btn" href="console.html">Open Configurator</a>
     </div>
-    <div class="hero-links">
+    <div class="flex flex-wrap justify-center gap-x-5 gap-y-1 text-[13px] [&_a]:text-faint [&_a]:underline [&_a]:underline-offset-3 [&_a:hover]:text-fg">
       <a href="https://github.com/rover1312/shutterlink" target="_blank" rel="noopener">Forked from rover1312/shutterlink</a>
       <a href="https://github.com/FPVShutter/FPVShutter/releases" target="_blank" rel="noopener">Latest release</a>
       <a href="reference.html#repository-structure">Source layout</a>
@@ -83,62 +84,62 @@
 
   <section class="section">
     <h2>What it does</h2>
-    <div class="grid">
-      <div class="glass feature">
+    <div class="grid-auto">
+      <div class="feature">
         <svg class="ic"><use href="#i-sliders"/></svg>
         <h3>RC-switch record control</h3>
         <p>Start/stop recording from any AUX channel, read straight from Betaflight via MSP. Channel,
           threshold and debounce are all configurable — no recompiling.</p>
       </div>
-      <div class="glass feature">
+      <div class="feature">
         <svg class="ic"><use href="#i-chip"/></svg>
         <h3>Record-on-arm</h3>
         <p>Optional auto-start when the flight controller arms, with an optional stop-on-disarm and
           grace-period delay. Toggle it from either Web UI.</p>
       </div>
-      <div class="glass feature">
+      <div class="feature">
         <svg class="ic"><use href="#i-layers"/></svg>
         <h3>Live OSD telemetry</h3>
         <p>Build each of the four Betaflight Custom Messages from a label plus up to four elements:
           camera state, rec time, battery, link, FC voltage, arm state, and on the Osmo Nano and Action 4+
           the camera's mode, resolution and frame rate. The preview updates as you edit.</p>
       </div>
-      <div class="glass feature">
+      <div class="feature">
         <svg class="ic"><use href="#i-cam"/></svg>
         <h3>Four camera backends</h3>
         <p>DJI Osmo Nano and DJI Osmo Action 2 (DUML over BLE), DJI Osmo Action 4 / 5 Pro / 6 (DJI's
           official R SDK protocol over BLE) and GoPro HERO8 through HERO13 (official Open GoPro BLE API),
           switchable at runtime. Nano, Action 2 and Action 4 are all tested on hardware.</p>
       </div>
-      <div class="glass feature">
+      <div class="feature">
         <svg class="ic"><use href="#i-bt"/></svg>
         <h3>Saved-camera registry</h3>
         <p>Scan for nearby cameras, <strong>Pair &amp; Save</strong> the one that's yours (up to 4), and
           the ESP32 reconnects automatically forever after. Nothing is written to flash without your
           consent.</p>
       </div>
-      <div class="glass feature">
+      <div class="feature">
         <svg class="ic"><use href="#i-wifi"/></svg>
         <h3>RF-friendly radio options</h3>
         <p>Kill the Web UI hotspot in flight from a spare AUX channel (saves ~60–100&nbsp;mA), keep Wi-Fi
           off entirely with the master switch, and set Bluetooth power to Low / Medium / High for builds
           where the board sits next to an ELRS receiver.</p>
       </div>
-      <div class="glass feature">
+      <div class="feature">
         <svg class="ic"><use href="#i-usb"/></svg>
         <h3>Web Serial Configurator</h3>
         <p>A GitHub Pages-hosted page that talks to the board over USB or through Betaflight
           passthrough — no Wi-Fi needed — for bench setup, firmware updates without unplugging the C3,
           an OSD live preview, unrestricted MSP passthrough and a raw serial log.</p>
       </div>
-      <div class="glass feature">
+      <div class="feature">
         <svg class="ic"><use href="#i-aperture"/></svg>
-        <h3>Built-in Glassmorphism Web UI</h3>
+        <h3>Built-in field Web UI</h3>
         <p>Connect to the ESP32's own hotspot and a full dashboard opens automatically — live status,
           manual REC/STOP, OTA firmware updates, dark &amp; light mode.</p>
       </div>
     </div>
-    <p style="margin-top:22px">…and persistent NVS-backed settings, status-LED link-state patterns, and a
+    <p class="mt-5">…and persistent NVS-backed settings, status-LED link-state patterns, and a
       modular firmware split cleanly between MSP/FC handling, camera backends, and the two config
       transports. See the <a href="reference.html#repository-structure">repository structure</a> for the
       full breakdown.</p>
@@ -149,28 +150,28 @@
     <p>A switch flip (or arming the FC) tells the ESP32 to start or stop the camera over Bluetooth; the
       camera's own telemetry gets pushed back into your OSD.</p>
     <div class="flow">
-      <div class="node glass"><b>Radio TX</b><span>RC frames</span></div>
+      <div class="node"><b>Radio TX</b><span>RC frames</span></div>
       <div class="arrow"><svg width="20" height="20"><use href="#i-arrow"/></svg></div>
-      <div class="node glass"><b>Flight controller</b><span>Betaflight · MSP over UART</span></div>
+      <div class="node"><b>Flight controller</b><span>Betaflight · MSP over UART</span></div>
       <div class="arrow"><svg width="20" height="20"><use href="#i-arrow"/></svg></div>
-      <div class="node glass"><b>ESP32-C3</b><span>FPVShutter</span></div>
+      <div class="node"><b>ESP32-C3</b><span>FPVShutter</span></div>
       <div class="arrow"><svg width="20" height="20"><use href="#i-arrow"/></svg></div>
-      <div class="node glass"><b>Camera</b><span>DJI DUML / GoPro Open BLE</span></div>
+      <div class="node"><b>Camera</b><span>DJI DUML / GoPro Open BLE</span></div>
     </div>
-    <div class="grid cols-2" style="margin-top:8px">
-      <div class="glass feature">
+    <div class="grid-auto cols-2 mt-2">
+      <div class="feature">
         <svg class="ic"><use href="#i-layers"/></svg>
         <h3>Camera → OSD</h3>
         <p>Up to four independent telemetry strings, each a label plus up to four elements, pushed on
           change into Betaflight Custom Messages 1–4 via <code>MSP2_SET_TEXT</code>.</p>
       </div>
-      <div class="glass feature">
+      <div class="feature">
         <svg class="ic"><use href="#i-wifi"/></svg>
         <h3>Field Web UI</h3>
         <p>The ESP32 runs a SoftAP (default SSID <code>FPVShutter</code>). Browse to
           <code>http://192.168.4.1</code> from any phone or PC.</p>
       </div>
-      <div class="glass feature">
+      <div class="feature">
         <svg class="ic"><use href="#i-usb"/></svg>
         <h3>Configurator</h3>
         <p>The same configuration surface is reachable over USB from this site — useful on the bench, or
@@ -191,31 +192,31 @@
         <tr><td>Wiring</td><td>4 wires: 5&nbsp;V, GND, FC TX, FC RX.</td></tr>
       </table>
     </div>
-    <p style="margin-top:14px">Full wiring diagram, LED patterns and the native-USB C3 build-flag gotcha
+    <p class="mt-3.5">Full wiring diagram, LED patterns and the native-USB C3 build-flag gotcha
       are in the <a href="setup.html">step-by-step setup guide</a>.</p>
   </section>
 
   <section class="section">
     <h2>Where to go next</h2>
-    <div class="grid cols-2">
-      <a class="glass feature" href="setup.html" style="text-decoration:none;display:block">
+    <div class="grid-auto cols-4">
+      <a class="feature" href="setup.html">
         <svg class="ic"><use href="#i-book"/></svg>
         <h3>Setup Guide</h3>
         <p>Wire the ESP32 to your FC, configure Betaflight, flash the firmware and pair your camera —
           start to finish.</p>
       </a>
-      <a class="glass feature" href="webui.html" style="text-decoration:none;display:block">
+      <a class="feature" href="webui.html">
         <svg class="ic"><use href="#i-sliders"/></svg>
         <h3>Web UI Guide</h3>
         <p>A tab-by-tab tour of the field dashboard: status, controls, camera pairing, OSD slots and OTA
           updates.</p>
       </a>
-      <a class="glass feature" href="console.html" style="text-decoration:none;display:block">
+      <a class="feature" href="console.html">
         <svg class="ic"><use href="#i-usb"/></svg>
         <h3>Configurator</h3>
         <p>Open the live USB configuration tool right here in your browser — no Wi-Fi network required.</p>
       </a>
-      <a class="glass feature" href="reference.html" style="text-decoration:none;display:block">
+      <a class="feature" href="reference.html">
         <svg class="ic"><use href="#i-chip"/></svg>
         <h3>Reference</h3>
         <p>Protocol details, the REST API, camera BLE specifics, repository layout and the roadmap — for
@@ -226,9 +227,9 @@
 
 </main>
 
-<footer class="site-footer">
+<footer class="mx-auto mt-16 flex max-w-full flex-wrap justify-between gap-5 border-t border-line px-5 pt-7 pb-8 text-[13px] text-faint [&_a]:text-faint [&_a:hover]:text-fg">
   <span>FPVShutter · MIT licensed · A fork of <a href="https://github.com/rover1312/shutterlink" target="_blank" rel="noopener">rover1312/shutterlink</a> · Not affiliated with DJI, GoPro or itsFPV</span>
-  <div class="footer-links">
+  <div class="flex flex-wrap gap-4">
     <a href="https://github.com/FPVShutter/FPVShutter" target="_blank" rel="noopener">GitHub</a>
     <a href="https://github.com/rover1312/shutterlink" target="_blank" rel="noopener">Upstream</a>
     <a href="https://github.com/FPVShutter/FPVShutter/releases" target="_blank" rel="noopener">Releases</a>

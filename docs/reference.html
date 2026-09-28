@@ -5,11 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Reference — FPVShutter</title>
 <meta name="description" content="Protocol reference for FPVShutter: Web Serial bench-console protocol, Betaflight passthrough mechanics, DJI/GoPro BLE camera protocols, REST API, repository layout, roadmap and credits.">
-<script>(function(){try{var t=localStorage.getItem('fpvshutter.theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<script>try{document.documentElement.setAttribute('data-theme',localStorage.getItem('fpvshutter.theme')||(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'))}catch(e){}</script>
 <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
-<div class="bg"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
 <svg width="0" height="0" style="position:absolute">
 <defs>
 <symbol id="i-aperture" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 3.5 L15.8 9.8 M20.9 9.4 L13.4 10.9 M17.8 19.4 L12.9 13.1 M6.4 19 L10.6 12.9 M3.2 10.2 L10.5 11.4 M8 4.9 L11.4 11" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".85"/><circle cx="12" cy="12" r="3.1" fill="currentColor" opacity=".22"/></symbol>
@@ -21,27 +20,29 @@
 </defs>
 </svg>
 
-<header class="site-header glass">
-  <a href="index.html" class="brand">
-    <svg><use href="#i-aperture"/></svg>
-    <span class="name">FPVShutter<span class="sub">Betaflight Cam Control</span></span>
-  </a>
-  <button class="iconbtn" id="navToggle" aria-label="Toggle menu"><svg><use href="#i-menu"/></svg></button>
-  <nav class="site-nav">
-    <a href="index.html">Home</a>
-    <a href="setup.html">Setup Guide</a>
-    <a href="webui.html">Web UI Guide</a>
-    <a href="console.html">Configurator</a>
-    <a href="reference.html">Reference</a>
-  </nav>
-  <div class="header-actions">
-    <button class="iconbtn" id="themeBtn" title="Toggle theme"><svg id="themeIco"><use href="#i-moon"/></svg></button>
-    <a class="iconbtn" href="https://github.com/FPVShutter/FPVShutter" target="_blank" rel="noopener" title="View on GitHub"><svg><use href="#i-github"/></svg></a>
+<header class="sticky top-0 z-20 border-b border-line bg-surface">
+  <div class="relative mx-auto flex max-w-full items-center gap-4 px-5 py-3">
+    <a href="index.html" class="flex shrink-0 items-center gap-2.5 text-fg no-underline">
+      <svg class="size-7 text-accent"><use href="#i-aperture"/></svg>
+      <span class="leading-tight"><span class="block text-lg font-bold">FPVShutter</span><span class="block text-[10px] font-semibold tracking-[.16em] text-muted uppercase">Betaflight Cam Control</span></span>
+    </a>
+    <nav class="site-nav absolute inset-x-3 top-full mt-2 hidden flex-col gap-0.5 rounded-xl border border-line bg-surface p-2 [&.open]:flex md:static md:mt-0 md:flex md:flex-row md:border-0 md:bg-transparent md:p-0">
+      <a href="index.html">Home</a>
+      <a href="setup.html">Setup Guide</a>
+      <a href="webui.html">Web UI Guide</a>
+      <a href="console.html">Configurator</a>
+      <a href="reference.html">Reference</a>
+    </nav>
+    <div class="ml-auto flex items-center gap-2">
+      <button class="iconbtn md:hidden" id="navToggle" aria-label="Toggle menu"><svg><use href="#i-menu"/></svg></button>
+      <button class="iconbtn" id="themeBtn" title="Toggle theme" aria-label="Toggle theme"><svg><use id="themeIco" href="#i-moon"/></svg></button>
+      <a class="iconbtn" href="https://github.com/FPVShutter/FPVShutter" target="_blank" rel="noopener" title="View on GitHub" aria-label="View on GitHub"><svg><use href="#i-github"/></svg></a>
+    </div>
   </div>
 </header>
 
-<main class="page">
-  <section class="section" style="margin-top:12px">
+<main class="doc mx-auto max-w-6xl px-5 pt-2 pb-16">
+  <section class="section mt-3!">
     <h1>Reference</h1>
     <p class="lead">Protocol details, the REST/Web-Serial surface, camera BLE specifics, repository layout,
       known limitations and the roadmap — for contributors and the curious.</p>
@@ -63,7 +64,7 @@
     </nav>
 
     <div>
-      <section class="section" id="how-it-works" style="margin-top:0">
+      <section class="section mt-0!" id="how-it-works">
         <h2>How it works</h2>
         <ol>
           <li><strong>Switch / arm → ESP32:</strong> polls <code>MSP_RC</code> every 200&nbsp;ms; watches
@@ -452,7 +453,7 @@
     ├── web_server.h/.cpp    # SoftAP, captive DNS, REST API, OTA endpoint
     ├── serial_config.h/.cpp # Web Serial config protocol + serial OTA
     │                        #   (USB and FC UART / BF passthrough)
-    └── web_assets.h         # Embedded Glassmorphism Web UI (PROGMEM)</code></pre>
+    └── web_assets.h         # Generated: gzipped Web UI (PROGMEM), see web/</code></pre>
       </section>
 
       <section class="section" id="limitations">
@@ -462,8 +463,8 @@
             usage is no problem.</li>
           <li>GoPro telemetry depth depends on model firmware (battery %, encoding state; record timer is
             counted locally while encoding).</li>
-          <li>DJI telemetry is tested on the Osmo Nano, Osmo Action 2 and Osmo Action 4. The Action 3,
-            Action 5 Pro, Action 6 and Osmo 360 are untested.</li>
+          <li>DJI telemetry is tested on the Osmo Nano, Osmo Action 2, Osmo Action 4 and Osmo 360. The Action 3,
+            Action 5 Pro, and Action 6 are untested.</li>
           <li>While a saved camera is switched off, each reconnect attempt can block the main loop for up
             to 10&nbsp;s (<code>BLE_CONNECT_TIMEOUT_MS</code>), freezing OSD and switch updates for that
             time. Making the BLE connect non-blocking is on the roadmap.</li>
@@ -478,7 +479,7 @@
         <ul>
           <li>✅ GoPro profile (Open GoPro BLE)</li>
           <li>✅ Parallel info on all four custom messages</li>
-          <li>✅ Glassmorphism Web UI with dark/light mode</li>
+          <li>✅ Tailwind Web UI with dark/light mode</li>
           <li>✅ Record-on-arm (+ stop-on-disarm)</li>
           <li>✅ Camera registry with discovery scan + Pair &amp; Save</li>
           <li>✅ OTA firmware update from the Web UI</li>
@@ -540,7 +541,7 @@
           <li><a href="https://itsfpv.de/en-int/products/camlink" target="_blank" rel="noopener">itsfpv CamLink</a> — the commercial product this project replicates</li>
           <li><a href="https://github.com/betaflight/betaflight-configurator" target="_blank" rel="noopener">betaflight/betaflight-configurator</a> — the stock OSD font (<code>resources/osd/2/betaflight.mcm</code>, <strong>GPL-3.0</strong>), decoded into <code>docs/assets/osd-font.png</code> for the Configurator's OSD live preview</li>
         </ul>
-        <p style="margin-top:20px">MIT licensed — do what you want, fly safe, and land your protocols
+        <p class="mt-5">MIT licensed — do what you want, fly safe, and land your protocols
           responsibly.</p>
         <p><strong>Exception:</strong> <code>docs/assets/osd-font.png</code> is decoded from
           betaflight-configurator's stock OSD font and stays <strong>GPL-3.0</strong>, per the upstream
@@ -551,9 +552,9 @@
   </div>
 </main>
 
-<footer class="site-footer">
+<footer class="mx-auto mt-16 flex max-w-full flex-wrap justify-between gap-5 border-t border-line px-5 pt-7 pb-8 text-[13px] text-faint [&_a]:text-faint [&_a:hover]:text-fg">
   <span>FPVShutter · MIT licensed · A fork of <a href="https://github.com/rover1312/shutterlink" target="_blank" rel="noopener">rover1312/shutterlink</a> · Not affiliated with DJI, GoPro or itsFPV</span>
-  <div class="footer-links">
+  <div class="flex flex-wrap gap-4">
     <a href="https://github.com/FPVShutter/FPVShutter" target="_blank" rel="noopener">GitHub</a>
     <a href="https://github.com/rover1312/shutterlink" target="_blank" rel="noopener">Upstream</a>
     <a href="https://github.com/FPVShutter/FPVShutter/releases" target="_blank" rel="noopener">Releases</a>

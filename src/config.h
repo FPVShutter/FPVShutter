@@ -14,7 +14,7 @@
 #include <Arduino.h>
 
 // Firmware version string (shown in UI and OTA status endpoint)
-#define FIRMWARE_VERSION "v2.4"
+#define FIRMWARE_VERSION "v2.4.1"
 
 // ──────────────────────────────────────────────────────────────────────────────
 // UART / MSP Configuration

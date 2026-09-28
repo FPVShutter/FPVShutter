@@ -1,5 +1,5 @@
 // Renders a batch of cases with osd_format.cpp (via the compiled driver),
-// docs/osd-format.js and the copy embedded in src/web_assets.h, and fails
+// docs/osd-format.js and the copy embedded (gzipped) in src/web_assets.h, and fails
 // on any difference. Run through run.sh.
 const fs = require("fs");
 const path = require("path");
@@ -12,12 +12,18 @@ function load(code) {
   return sandbox.OsdFormat;
 }
 const docsCode = fs.readFileSync(path.join(DOCS, "osd-format.js"), "utf8");
-const assets = fs.readFileSync(path.join(SRC, "web_assets.h"), "utf8");
+// web_assets.h holds the gzipped page as a byte array: unpack it and pull
+// out the formatter exactly as it will run on the device.
+const zlib = require("zlib");
+const header = fs.readFileSync(path.join(SRC, "web_assets.h"), "utf8");
+const arr = header.match(/INDEX_HTML_GZ\[\]\s*PROGMEM\s*=\s*\{([^}]*)\}/);
+if (!arr) { console.error("FAIL: no INDEX_HTML_GZ array in web_assets.h (run npm run build:web)"); process.exit(1); }
+const assets = zlib.gunzipSync(Buffer.from(arr[1].match(/0x[0-9a-f]{2}/gi).map((h) => parseInt(h, 16)))).toString("utf8");
 const m = assets.match(/\/\*OSDFMT-BEGIN\*\/([\s\S]*?)\/\*OSDFMT-END\*\//);
 if (!m) { console.error("FAIL: no OSDFMT block in web_assets.h"); process.exit(1); }
 const impls = { docs: load(docsCode), webui: load(m[1]) };
-const docsBlock = docsCode.match(/\/\*OSDFMT-BEGIN\*\/([\s\S]*?)\/\*OSDFMT-END\*\//)[1];
-if (docsBlock.trim() !== m[1].trim()) console.log("note: web_assets.h copy differs textually from docs/osd-format.js (outputs still compared)");
+// The Web UI copy is minified from docs/osd-format.js at build time, so it
+// won't match textually; the outputs are what's compared below.
 
 // Deterministic pseudo-random cases + hand-picked edge cases.
 let seed = 12345;
