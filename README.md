@@ -3,7 +3,7 @@
 Open-source CamLink alternative based on [shutterlink](https://github.com/rover1312/shutterlink): an ESP32-C3 BLE bridge that turns a radio
 switch (or your arming switch!) into record control for **DJI Osmo Nano**,
 **DJI Osmo Action 2**, **DJI Osmo Action 4 / 5 Pro / 6** and **GoPro HERO8+** cameras, and pushes live camera telemetry into the
-Betaflight OSD - with a built-in **Glassmorphism Web UI**.
+Betaflight OSD - with a built-in **Web UI**.
 
 > **Requires a Betaflight build with Custom Message OSD elements**
 > (`MSP2_SET_TEXT` 0x3007, custom message types 7-10). Betaflight 4.x and
@@ -89,10 +89,10 @@ One test session's log is usually enough to see what that camera sends.
   machine. Camera commands are absolute start/stop (never toggles), so
   retries after reconnects are always safe.
   
-- **Built-in Web UI** - connect to the ESP32's Wi-Fi network and a modern
-  Glassmorphism dashboard opens automatically (captive portal): live status,
-  manual REC/STOP buttons, all configuration, OTA firmware updates, dark &
-  light mode, frosted-glass SVG icon set.
+- **Built-in Web UI** - connect to the ESP32's Wi-Fi network and a
+  dashboard opens automatically (captive portal): live status, manual
+  REC/STOP buttons, all configuration, OTA firmware updates, dark & light
+  mode. Built with Tailwind CSS and served gzipped (~22 KB of flash).
 
 - **Web Serial Configurator** - a GitHub Pages-hosted page (`docs/`) that
   talks straight to the board over USB (no Wi-Fi needed) for bench setup and
@@ -241,6 +241,24 @@ bigger app slot). `ARDUINO_USB_MODE` / `ARDUINO_USB_CDC_ON_BOOT` build flags
 are required for native-USB C3 boards — see the Hardware Requirements note
 above.
 
+#### Editing the Web UI or the docs styling
+
+The Web UI and the docs site are styled with [Tailwind CSS](https://tailwindcss.com)
+v4, which compiles only the utilities the pages actually use. Sources live in
+`web/`; `src/web_assets.h` and `docs/assets/site.css` are **generated** and
+committed, so a plain `pio run` never needs Node.
+
+```bash
+npm install          # once: Tailwind CLI
+npm run build:web    # rebuild src/web_assets.h + docs/assets/site.css
+npm run watch:docs   # optional: live-rebuild docs CSS while editing docs/*.html
+```
+
+Edit `web/webui.html` / `web/webui.css` for the device UI, `docs/*.html` /
+`web/docs.css` for the site, then run `npm run build:web` and commit the
+generated files alongside your change. The build inlines `docs/osd-format.js`
+into the Web UI, so the OSD formatter has a single JavaScript source.
+
 ### Step 4 - Connect to the Web UI
 
 1. Power the ESP32 (FC 5 V or USB).
@@ -361,9 +379,9 @@ The Camera tab has three cards:
 First-connection approvals happen on the **camera's own screen** (one tap
 for GoPro, sometimes one for DJI) - after that, reconnection is silent.
 
-The UI is a single-page app embedded in the firmware (PROGMEM, ~33 KB):
-frosted glass cards, backdrop blur, animated gradient background, smooth
-transitions, and a dark/light mode toggle that persists in your browser.
+The UI is a single-page app embedded in the firmware, stored gzipped in
+PROGMEM (~22 KB). Flat, solid surfaces keep it smooth on low-end phones; it
+follows your phone's light/dark setting and remembers the theme toggle.
 
 ### Can it configure Betaflight from the Web UI?
 
@@ -718,7 +736,14 @@ FPVShutter/
     |                       #   command logic shared by web_server + serial_config
     +-- web_server.h/.cpp   # SoftAP, captive DNS, REST API, OTA endpoint
     +-- serial_config.h/.cpp # Web Serial bench-config protocol (USB)
-    +-- web_assets.h        # Embedded Glassmorphism Web UI (PROGMEM)
+    +-- web_assets.h        # GENERATED gzipped Web UI (PROGMEM), from web/
+web/
+    +-- webui.html          # Web UI source (markup + JS)
+    +-- webui.css           # Tailwind entry for the Web UI
+    +-- docs.css            # Tailwind entry for the docs site
+    +-- theme.css           # Shared colour tokens (dark / light)
+tools/
+    +-- build_web.mjs       # npm run build:web -> src/web_assets.h + docs/assets/site.css
 ```
 
 ### OSD elements
@@ -753,7 +778,7 @@ Settings from firmware v2.3 and earlier (one fixed content per slot) are migrate
 to the equivalent layout on first boot.
 
 The formatter lives in `src/osd_format.cpp` and is mirrored in JavaScript for the
-previews (`docs/osd-format.js`, plus a copy inside `src/web_assets.h`).
+previews (`docs/osd-format.js`, which `npm run build:web` also inlines into `src/web_assets.h`).
 `sh tools/osd_host_test/run.sh` (needs `g++` and `node`) checks all three render
 identical text.
 
@@ -790,7 +815,7 @@ See "Web Serial configurator" above for the USB equivalent of this surface.
 
 - [x] GoPro profile (Open GoPro BLE)
 - [x] Parallel info on all four custom messages
-- [x] Glassmorphism Web UI with dark/light mode
+- [x] Tailwind Web UI with dark/light mode
 - [x] Record-on-arm (+ stop-on-disarm)
 - [x] Camera registry with discovery scan + Pair & Save
 - [x] OTA firmware update from the Web UI

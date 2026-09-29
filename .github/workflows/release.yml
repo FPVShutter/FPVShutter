@@ -47,14 +47,14 @@ jobs:
           name: firmware.bin
 
       - name: Rename Artifact
-        run: mv firmware.bin ESP32-C3-SuperMini-V2.4.bin
+        run: mv firmware.bin ESP32-C3-SuperMini-V2.4.1.bin
           
       - name: Release
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: v2.4
-          name: FPVShutter v2.4
-          files: ESP32-C3-SuperMini-V2.4.bin
+          tag_name: v2.4.1
+          name: FPVShutter v2.4.1
+          files: ESP32-C3-SuperMini-V2.4.1.bin
           prerelease: false
           draft: true
           token: ${{ github.token }}

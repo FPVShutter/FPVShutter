@@ -73,3 +73,5 @@ htmlcov/
 *.tar.bz2
 *.tar.xz
 *.tar.zst
+# Tailwind build scratch (tools/build_web.mjs)
+web/.build/

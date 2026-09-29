@@ -2,7 +2,7 @@
 // web_server.cpp — SoftAP + captive portal + REST API
 // ============================================================================
 // Endpoints:
-//   GET  /                Glassmorphism Web UI (PROGMEM)
+//   GET  /                Web UI (gzipped PROGMEM, built from web/)
 //   GET  /api/status      Live telemetry snapshot (JSON)
 //   POST /api/settings    Update + persist settings (JSON)
 //   POST /api/command     {"cmd":"start"|"stop"|"reboot"}
@@ -42,9 +42,19 @@ static char      _ipStr[16] = "192.168.4.1";
 // ──────────────────────────────────────────────────────────────────────────────
 
 static void handleRoot() {
-    // no-store: the UI is iterated quickly — never serve a stale cached copy.
-    _server.sendHeader("Cache-Control", "no-store, must-revalidate");
-    _server.send_P(200, "text/html", INDEX_HTML);
+    // The page is stored gzip-compressed (see tools/build_web.mjs). Browsers
+    // may cache it but must revalidate every time: the ETag is a hash of the
+    // page, so a reflashed UI is picked up immediately while an unchanged one
+    // costs a 304 instead of the full download.
+    _server.sendHeader("Cache-Control", "no-cache");
+    _server.sendHeader("ETag", INDEX_HTML_ETAG);
+    if (_server.header("If-None-Match") == INDEX_HTML_ETAG) {
+        _server.send(304);
+        return;
+    }
+    _server.sendHeader("Content-Encoding", "gzip");
+    _server.send_P(200, "text/html; charset=utf-8",
+                   (PGM_P)INDEX_HTML_GZ, INDEX_HTML_GZ_LEN);
 }
 
 static void handleStatus() {
@@ -416,6 +426,8 @@ void webStart() {
     _server.on("/library/test/success.html",    HTTP_GET, handleProbeApple);
     // Anything else (any hostname, any path) → our UI.
     _server.onNotFound(redirectToRoot);
+    static const char *kCollect[] = {"If-None-Match"};
+    _server.collectHeaders(kCollect, 1);
 
     _server.begin();
     _up = true;
@@ -447,4 +459,4 @@ void webUpdate() {
 }
 
 const char* webApIp() { return _ipStr; }
-bool webIsUp()        { return _up; }
+bool webIsUp()        { return _up; }

@@ -1,0 +1,66 @@
+/* ============================================================================
+   theme.css: design tokens shared by the device Web UI and the docs site.
+   Imported by web/webui.css and web/docs.css (never compiled on its own).
+
+   Colours are CSS variables, so one set of utilities (bg-surface, text-muted,
+   border-line…) works in both themes: the <html data-theme> attribute swaps
+   the values and nothing else changes. Dark is the default when no attribute
+   is set.
+============================================================================ */
+
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
+@theme inline {
+  --color-bg:      var(--c-bg);
+  --color-surface: var(--c-surface);
+  --color-raised:  var(--c-raised);
+  --color-line:    var(--c-line);
+  --color-fg:      var(--c-fg);
+  --color-muted:   var(--c-muted);
+  --color-faint:   var(--c-faint);
+  --color-accent:  var(--c-accent);
+  --color-on-accent: var(--c-on-accent);
+  --color-ok:      var(--c-ok);
+  --color-rec:     var(--c-rec);
+  --color-warn:    var(--c-warn);
+  --color-osd:     #1d2129;
+
+  --font-sans: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  --font-mono: "Cascadia Code", ui-monospace, Consolas, "SF Mono", Menlo, monospace;
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    --c-bg: #0b0f17;
+    --c-surface: #121826;
+    --c-raised: #1a2233;
+    --c-line: #263048;
+    --c-fg: #e8edf7;
+    --c-muted: #97a3bd;
+    --c-faint: #6b7791;
+    --c-accent: #6ea8ff;
+    --c-on-accent: #07101f;
+    --c-ok: #3ddc97;
+    --c-rec: #ff4d67;
+    --c-warn: #ffb454;
+  }
+  [data-theme=light] {
+    color-scheme: light;
+    --c-bg: #eef1f6;
+    --c-surface: #ffffff;
+    --c-raised: #f3f5f9;
+    --c-line: #dbe1eb;
+    --c-fg: #131a2b;
+    --c-muted: #56627a;
+    --c-faint: #7f8ba2;
+    --c-accent: #2f6fdb;
+    --c-on-accent: #ffffff;
+    --c-ok: #128a57;
+    --c-rec: #d92944;
+    --c-warn: #a8640a;
+  }
+  html { -webkit-tap-highlight-color: transparent; }
+  body { @apply bg-bg font-sans text-fg antialiased; }
+  code, kbd, pre, samp { @apply font-mono; }
+}

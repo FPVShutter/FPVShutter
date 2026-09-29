@@ -1,0 +1,13 @@
+{
+  "name": "fpvshutter-web",
+  "private": true,
+  "description": "Builds the FPVShutter device Web UI (src/web_assets.h) and docs site CSS with Tailwind",
+  "scripts": {
+    "build:web": "node tools/build_web.mjs",
+    "watch:docs": "tailwindcss -i web/docs.css -o docs/assets/site.css --watch"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "4.3.3",
+    "tailwindcss": "4.3.3"
+  }
+}
