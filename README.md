@@ -409,7 +409,7 @@ browser's [Web Serial API](https://developer.mozilla.org/en-US/docs/Web/API/Web_
 no Wi-Fi network required. Useful for bench setup, and it shares a raw
 `DBG()` log panel you don't get from the SoftAP Web UI.
 
-**Requirements:** a Chromium-based desktop browser (Chrome, Edge, Opera) and
+**Requirements:** a desktop browser that supports the Web Serial API (Chrome/Edge v89+, Opera v75+, Firefox v151+) and
 a secure context — `https://` (GitHub Pages is fine) or `http://localhost`.
 Web Serial does **not** work opened as a `file://` URL. For local testing,
 serve the folder (`python3 -m http.server` from `docs/`, then visit
