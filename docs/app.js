@@ -261,11 +261,11 @@ function resolvePassthroughTarget(serialLines, uartNumber) {
   const namedRe = new RegExp(`^serial\\s+(UART${uartNumber})\\b`, "i");
   for (const line of serialLines) {
     const m = line.match(namedRe);
-    if (m) return { target: m[1].toUpperCase(), style: "named (25.12+)" };
+    if (m) return { target: m[1].toUpperCase(), style: "named (26.06+)" };
   }
   // No matching named line seen (older firmware, or a differently-worded
   // listing) — fall back to the legacy zero-based numeric id.
-  return { target: String(uartNumber - 1), style: "numeric id (pre-25.12, guessed)" };
+  return { target: String(uartNumber - 1), style: "numeric id (25.12, guessed)" };
 }
 
 async function connectViaFcPassthrough() {
