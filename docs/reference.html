@@ -182,8 +182,8 @@
         <div class="table-wrap">
           <table>
             <tr><th>Version</th><th>Syntax</th></tr>
-            <tr><td><strong>pre-25.12</strong></td><td>a zero-based numeric port id, e.g. <code>serialpassthrough 2 115200</code> for UART3. The <code>serial</code> command's own listing was numeric-only too.</td></tr>
-            <tr><td><strong>25.12+</strong></td><td><code>serial</code> now names each port (<code>serial UART4 1 115200 …</code>) and <code>serialpassthrough</code> takes that same name directly — <code>serialpassthrough UART4 115200</code>. A bare numeric id now fails with <code>Invalid port1</code>.</td></tr>
+            <tr><td><strong>25.12</strong></td><td>a zero-based numeric port id, e.g. <code>serialpassthrough 2 115200</code> for UART3. The <code>serial</code> command's own listing was numeric-only too.</td></tr>
+            <tr><td><strong>26.06+</strong></td><td><code>serial</code> now names each port (<code>serial UART4 1 115200 …</code>) and <code>serialpassthrough</code> takes that same name directly — <code>serialpassthrough UART4 115200</code>. A bare numeric id now fails with <code>Invalid port1</code>.</td></tr>
           </table>
         </div>
         <p>The Configurator runs <code>serial</code> itself first and reads which style this firmware
@@ -192,7 +192,7 @@
           open Betaflight Configurator's CLI tab yourself, run <code>serial</code> to see which style your
           firmware wants, then <code>serialpassthrough &lt;target&gt; &lt;baud&gt;</code> per the table
           above, close the Configurator so the OS COM port is free, then use the console's plain
-          <strong>"Connect over USB"</strong> button and pick that same COM port.</p>
+          <strong>"Connect (BF passthrough)"</strong> button and pick that same COM port.</p>
         <p>While a bench session is active on the FC UART (and for the whole of an OTA flash), the
           firmware pauses its own MSP polling, OSD pushes and automatic camera reconnect attempts, so
           nothing else writes to that UART and corrupts the JSON replies. The bench view's FC fields
